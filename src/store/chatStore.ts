@@ -34,6 +34,8 @@ interface AppStore {
   createSession: () => string;
   setCurrentSession: (id: string) => void;
   getCurrentSession: () => ChatSession | null;
+  deleteSession: (id: string) => void;
+  deleteAllSessions: () => void;
 
   addMessage: (msg: ChatMessage) => void;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void;
@@ -71,6 +73,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
     return sessions.find((s) => s.id === currentSessionId) || null;
   },
 
+  deleteSession: (id) =>
+    set((s) => {
+      const filtered = s.sessions.filter((ses) => ses.id !== id);
+      const newCurrentId = s.currentSessionId === id
+        ? (filtered[0]?.id || null)
+        : s.currentSessionId;
+      return { sessions: filtered, currentSessionId: newCurrentId };
+    }),
+
+  deleteAllSessions: () => set({ sessions: [], currentSessionId: null }),
+
   addMessage: (msg) =>
     set((s) => ({
       sessions: s.sessions.map((ses) =>
@@ -83,7 +96,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       sessions: s.sessions.map((ses) =>
         ses.id === s.currentSessionId
           ? { ...ses, messages: ses.messages.map((m) => (m.id === id ? { ...m, ...updates } : m)),
-              title: updates.question && ses.messages.length === 0 ? updates.question.slice(0, 30) : ses.title }
+              title: updates.question && ses.messages.length <= 1 ? (updates.question as string).slice(0, 30) : ses.title }
           : ses
       ),
     })),
