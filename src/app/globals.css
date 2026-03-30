@@ -20,8 +20,8 @@ html, body {
 .font-logo { font-family: 'Playfair Display', serif; }
 
 .chat-input-area {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
   border-radius: 24px;
   transition: border-color 0.2s ease;
 }
