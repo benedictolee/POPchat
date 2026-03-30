@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useAppStore } from '@/store/chatStore';
+import { useAppStore, ChatMessage } from '@/store/chatStore';
 import {
   Send, Sparkles, Bookmark, BookmarkCheck, Plus, MessageSquare,
   X, Menu, PanelLeftOpen, PanelRightOpen, ChevronDown, ChevronUp, Trash2,
@@ -165,7 +165,7 @@ export default function Home() {
   const text4 = dark ? 'text-[#444]' : 'text-[#ccc]';
   const inputBg = dark ? 'bg-[#1a1a1a]' : 'bg-[#f7f7f8]';
 
-  const renderMessages = (msgs: typeof session.messages, prefix: string, isSub: boolean) =>
+  const renderMessages = (msgs:ChatMessage[], prefix: string, isSub: boolean) =>
     msgs.map((msg) => (
       <div key={msg.id} id={`${prefix}${msg.id}`} className="animate-fadeIn">
         <div className="flex justify-end mb-2">
