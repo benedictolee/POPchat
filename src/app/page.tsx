@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useAppStore, ChatMessage } from '@/store/chatStore';
+import { useAppStore } from '@/store/chatStore';
 import {
   Send, Sparkles, Bookmark, BookmarkCheck,
-  Plus, MessageSquare, X, Menu, PanelLeftOpen, PanelRightOpen, ChevronDown
+  Plus, MessageSquare, X, Menu, PanelLeftOpen, PanelRightOpen, ChevronDown, Trash2
 } from 'lucide-react';
 
 const genId = () => Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
@@ -21,6 +21,7 @@ export default function Home() {
   const [showMainBM, setShowMainBM] = useState(false);
   const [showSubBM, setShowSubBM] = useState(false);
   const [subSheetHeight, setSubSheetHeight] = useState(50);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef(false);
   const dragStartY = useRef(0);
@@ -124,6 +125,17 @@ export default function Home() {
     setSubSheetHeight(Math.max(25, Math.min(85, dragStartH.current + dvh)));
   };
 
+  const handleDelete = (id: string) => {
+    if (confirmDelete === id) {
+      store.deleteSession(id);
+      setConfirmDelete(null);
+      setActiveSubId(null);
+    } else {
+      setConfirmDelete(id);
+      setTimeout(() => setConfirmDelete(null), 3000);
+    }
+  };
+
   const activeSub = session?.subChats.find((s) => s.id === activeSubId && s.isOpen);
   const mainBMs = session?.messages.filter((m) => m.bookmarked) || [];
   const subBMs = session?.subChats.flatMap((sc) => sc.messages.filter((m) => m.bookmarked).map((m) => ({ ...m, subId: sc.id }))) || [];
@@ -135,14 +147,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen h-[100dvh] overflow-hidden">
-      {/* 사이드바 오버레이 */}
-      {showSidebar && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowSidebar(false)} />}
+      {showSidebar && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => { setShowSidebar(false); setConfirmDelete(null); }} />}
 
-      {/* 사이드바 */}
-      <div className={`fixed top-0 left-0 h-full w-72 bg-[#111] border-r border-[#2a2a2a] z-50 transition-transform duration-200 ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed top-0 left-0 h-full w-72 bg-[#111] border-r border-[#2a2a2a] z-50 transition-transform duration-200 flex flex-col ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-3 border-b border-[#2a2a2a] flex items-center justify-between">
           <span className="text-sm font-medium">채팅 목록</span>
-          <button onClick={() => setShowSidebar(false)} className="text-[#666] hover:text-white"><X size={16} /></button>
+          <button onClick={() => { setShowSidebar(false); setConfirmDelete(null); }} className="text-[#666] hover:text-white"><X size={16} /></button>
         </div>
         <button onClick={() => { store.createSession(); setActiveSubId(null); setShowSidebar(false); }}
           className="m-2 p-2.5 text-xs bg-[#1e1e1e] rounded-lg hover:bg-[#2a2a2a] flex items-center gap-2 text-[#4a9eff] w-[calc(100%-16px)]">
@@ -150,17 +160,29 @@ export default function Home() {
         </button>
         <div className="flex-1 overflow-y-auto">
           {store.sessions.map((ses) => (
-            <button key={ses.id} onClick={() => { store.setCurrentSession(ses.id); setActiveSubId(null); setShowSidebar(false); }}
-              className={`w-full text-left px-3 py-2.5 text-xs truncate ${ses.id === store.currentSessionId ? 'bg-[#1e1e1e] text-white' : 'text-[#888] hover:bg-[#1a1a1a]'}`}>
-              <MessageSquare size={12} className="inline mr-2" />{ses.title}
-            </button>
+            <div key={ses.id} className={`flex items-center group ${ses.id === store.currentSessionId ? 'bg-[#1e1e1e]' : 'hover:bg-[#1a1a1a]'}`}>
+              <button onClick={() => { store.setCurrentSession(ses.id); setActiveSubId(null); setShowSidebar(false); setConfirmDelete(null); }}
+                className="flex-1 text-left px-3 py-2.5 text-xs truncate text-[#888]">
+                <MessageSquare size={12} className="inline mr-2" />{ses.title}
+              </button>
+              <button onClick={() => handleDelete(ses.id)}
+                className={`mr-2 p-1 rounded transition-colors ${confirmDelete === ses.id ? 'bg-red-500/20 text-red-400' : 'text-[#444] opacity-0 group-hover:opacity-100 active:opacity-100'}`}>
+                <Trash2 size={13} />
+              </button>
+            </div>
           ))}
         </div>
+        {store.sessions.length > 1 && (
+          <div className="p-2 border-t border-[#2a2a2a]">
+            <button onClick={() => { if (confirm('모든 채팅을 삭제할까요?')) { store.deleteAllSessions(); setActiveSubId(null); } }}
+              className="w-full p-2 text-xs text-[#666] hover:text-red-400 rounded-lg hover:bg-[#1a1a1a] flex items-center justify-center gap-1">
+              <Trash2 size={12} /> 전체 삭제
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 메인 */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* 헤더 */}
         <header className="flex items-center justify-between px-3 py-2 border-b border-[#2a2a2a] bg-[#0a0a0a] z-10">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowSidebar(true)} className="text-[#666] hover:text-white p-1"><Menu size={18} /></button>
@@ -178,7 +200,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* 북마크 */}
         {showMainBM && mainBMs.length > 0 && (
           <div className="bg-[#111] border-b border-[#2a2a2a] px-3 py-2 max-h-28 overflow-y-auto animate-fadeIn">
             <p className="text-[10px] text-[#4a9eff] mb-1">메인 북마크</p>
@@ -197,7 +218,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* 채팅 */}
         <main className="flex-1 overflow-y-auto px-3 py-4">
           <div className="max-w-2xl mx-auto space-y-5">
             {!session || session.messages.length === 0 ? (
@@ -239,7 +259,6 @@ export default function Home() {
           </div>
         </main>
 
-        {/* 입력 */}
         <div className="px-3 pb-3 pt-1 bg-[#0a0a0a]">
           <div className="chat-input-area flex items-end gap-2 px-3 py-2 max-w-2xl mx-auto">
             <textarea value={input} onChange={(e) => setInput(e.target.value)}
@@ -256,27 +275,20 @@ export default function Home() {
           <p className="text-center text-[9px] text-[#444] mt-1">꾹 누르면 팝업 채팅</p>
         </div>
 
-        {/* 팝업 서브채팅 - 모바일: 아래서 올라오는 시트 */}
         {activeSub && (
           <>
             <div className="fixed inset-0 bg-black/30 z-30" onClick={() => { store.closeSubChat(activeSub.id); setActiveSubId(null); }} />
             <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0d0d0d] border-t border-[#f59e0b]/30 rounded-t-2xl flex flex-col animate-fadeIn"
               style={{ height: `${subSheetHeight}vh` }}>
-
-              {/* 드래그 핸들 */}
               <div className="flex justify-center pt-2 pb-1" onTouchStart={handleDragStart} onTouchMove={handleDragMove}>
                 <div className="w-10 h-1 bg-[#333] rounded-full" />
               </div>
-
-              {/* 서브 헤더 */}
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#2a2a2a]">
                 <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
                 <button onClick={() => { store.closeSubChat(activeSub.id); setActiveSubId(null); }} className="text-[#666] active:text-white p-1">
                   <ChevronDown size={16} />
                 </button>
               </div>
-
-              {/* 서브 메시지 */}
               <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
                 {activeSub.messages.map((msg) => (
                   <div key={msg.id} id={`sub-${msg.id}`} className="animate-fadeIn">
@@ -307,8 +319,6 @@ export default function Home() {
                 ))}
                 <div ref={subMessagesEndRef} />
               </div>
-
-              {/* 서브 입력 */}
               <div className="px-3 pb-3 pt-1">
                 <div className="flex items-end gap-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-2.5 py-1.5">
                   <textarea value={subInput} onChange={(e) => setSubInput(e.target.value)}
