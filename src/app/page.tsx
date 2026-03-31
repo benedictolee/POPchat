@@ -434,7 +434,7 @@ export default function Home() {
         )}
 
         {/* 입력창 (항상 맨 아래) */}
-        <div className={`px-3 pb-2 pt-2 ${bg} flex-shrink-0`}>
+        <div className={`px-3 pb-1 pt-2 ${bg} flex-shrink-0`}>
           <div className={`flex flex-col px-3 py-2 max-w-2xl mx-auto border ${popMode ? 'border-[#f59e0b]' : `${border}`} rounded-2xl ${bg} transition-colors`}>
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
