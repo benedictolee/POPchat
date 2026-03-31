@@ -30,7 +30,7 @@ export default function Home() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMainBM, setShowMainBM] = useState(false);
   const [showSubBM, setShowSubBM] = useState(false);
-  const [subPanelSize, setSubPanelSize] = useState(40);
+  const [subPanelSize, setSubPanelSize] = useState(35);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,7 +39,7 @@ export default function Home() {
   const [shortcutInput, setShortcutInput] = useState(false);
   const isDragging = useRef(false);
   const dragStart = useRef(0);
-  const dragStartSize = useRef(40);
+  const dragStartSize = useRef(35);
 
   useEffect(() => { store.loadSessions(); }, []);
   useEffect(() => { store.saveSessions(); }, [store.sessions]);
@@ -66,7 +66,6 @@ export default function Home() {
     document.body.style.color = dark ? '#ffffff' : '#1a1a1a';
   }, [dark]);
 
-  // 단축키
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (shortcutInput) return;
@@ -168,7 +167,7 @@ export default function Home() {
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const dy = dragStart.current - clientY;
     const dvh = (dy / window.innerHeight) * 100;
-    setSubPanelSize(Math.max(15, Math.min(70, dragStartSize.current + dvh)));
+    setSubPanelSize(Math.max(10, Math.min(60, dragStartSize.current + dvh)));
   };
   const handleDragEnd = () => { isDragging.current = false; };
 
@@ -181,6 +180,7 @@ export default function Home() {
   const mainBMs = session?.messages.filter((m) => m.bookmarked) || [];
   const subBMs = session?.subChats.flatMap((sc) => sc.messages.filter((m) => m.bookmarked).map((m) => ({ ...m, subId: sc.id }))) || [];
   const filteredSessions = searchQuery ? store.sessions.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()) || s.messages.some((m) => m.question.toLowerCase().includes(searchQuery.toLowerCase()))) : store.sessions;
+  const showPopup = !!activeSub;
 
   const bg = dark ? 'bg-[#0a0a0a]' : 'bg-white';
   const bg2 = dark ? 'bg-[#111]' : 'bg-[#fafafa]';
@@ -191,8 +191,8 @@ export default function Home() {
   const text3 = dark ? 'text-[#666]' : 'text-[#999]';
   const text4 = dark ? 'text-[#444]' : 'text-[#ccc]';
   const inputBg = dark ? 'bg-[#1a1a1a]' : 'bg-[#f7f7f8]';
-  const popBg = dark ? 'bg-[#0d0d0d]' : 'bg-[#fffdf8]';
 
+  // 메시지 렌더링
   const renderMessages = (msgs: ChatMessage[], prefix: string, isSub: boolean) =>
     msgs.map((msg) => (
       <div key={msg.id} id={`${prefix}${msg.id}`} className="animate-fadeIn">
@@ -218,58 +218,11 @@ export default function Home() {
         {msg.answer && (
           <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); isSub && activeSubId ? store.toggleSubBookmark(activeSubId, msg.id) : store.toggleBookmark(msg.id); }}
             className={`ml-5 ${msg.bookmarked ? (isSub ? 'text-[#f59e0b]' : 'text-[#4a9eff]') : text4}`}>
-            {msg.bookmarked ? <span className="text-xs">●</span> : <span className="text-xs">○</span>}
+            {msg.bookmarked ? <BookmarkCheck size={isSub ? 12 : 14} /> : <Bookmark size={isSub ? 12 : 14} />}
           </button>
         )}
       </div>
     ));
-
-  const renderInput = () => (
-    <div className={`px-3 pb-2 pt-2 ${bg} flex-shrink-0`}>
-      <div className={`chat-input-area ${popMode ? 'pop-mode' : ''} flex flex-col px-3 py-2 max-w-2xl mx-auto`}>
-        <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
-          placeholder={popMode ? '팝업 질문...' : '메시지 입력...'} rows={2}
-          className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30">
-          <div className="flex items-center gap-3">
-            <button onClick={togglePopMode}
-              className={`p-2 rounded-full transition-colors ${popMode ? 'bg-[#f59e0b] text-white' : `${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} ${text3}`}`}>
-              <Zap size={15} />
-            </button>
-            <button onClick={() => alert('파일 첨부 기능은 준비 중입니다.')}
-              className={`p-2 rounded-full ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} ${text3} active:scale-95`}>
-              <Plus size={15} />
-            </button>
-          </div>
-          <button onClick={handleUnifiedSend}
-            disabled={!input.trim() || store.isLoading || !!store.subChatLoading}
-            className={`p-2.5 ${popMode ? 'bg-[#f59e0b]' : 'bg-[#4a9eff]'} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
-            <Send size={15} className="text-white" />
-          </button>
-        </div>
-      </div>
-      <p className={`text-center text-[9px] mt-0.5 ${popMode ? 'text-[#f59e0b]' : text4}`}>
-        {popMode ? '⚡ 팝업 모드' : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}
-      </p>
-    </div>
-  );
-
-  const renderPopupPanel = () => {
-    if (!activeSub) return null;
-    return (
-      <div className="flex flex-col h-full">
-        <div className={`flex items-center justify-between px-3 py-1.5 border-b ${border} flex-shrink-0`}>
-          <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
-          <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-          {renderMessages(activeSub.messages, 'sub-', true)}
-          <div ref={subMessagesEndRef} />
-        </div>
-      </div>
-    );
-  };
 
   // 설정 화면
   if (showSettings) {
@@ -347,14 +300,15 @@ export default function Home() {
     );
   }
 
-  // 메인
+  // ========== 메인 레이아웃 ==========
   const popupPos = isMobile ? 'bottom' : settings.popupPosition;
-  const showPopup = !!activeSub;
 
   return (
     <div className={`flex h-[100dvh] overflow-hidden ${bg}`}>
+      {/* 사이드바 오버레이 */}
       {showSidebar && <div className="fixed inset-0 bg-black/20 z-40" onClick={() => { setShowSidebar(false); setConfirmDelete(null); setShowSearch(false); }} />}
 
+      {/* 사이드바 */}
       <div className={`fixed top-0 left-0 h-full w-72 ${bg2} border-r ${border} z-50 transition-transform duration-200 flex flex-col ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className={`p-3 border-b ${border} flex items-center justify-between`}>
           <span className={`text-sm font-medium ${text1}`}>채팅 목록</span>
@@ -393,14 +347,23 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 왼쪽 팝업 (PC) */}
+      {/* PC 왼쪽 팝업 */}
       {showPopup && popupPos === 'left' && !isMobile && (
-        <div className={`w-80 ${popBg} border-r ${border} flex flex-col flex-shrink-0 animate-fadeIn`}>
-          {renderPopupPanel()}
+        <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-r border-[#f59e0b]`}>
+          <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
+            <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
+            <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+            {renderMessages(activeSub!.messages, 'sub-', true)}
+            <div ref={subMessagesEndRef} />
+          </div>
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0 relative">
+      {/* 메인 컬럼: 헤더 → 채팅 → 팝업(모바일/아래) → 입력창 */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* 헤더 */}
         <header className={`flex items-center justify-between px-3 py-2 border-b ${border} ${bg} z-10 flex-shrink-0`}>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowSidebar(true)} className={`${text3} p-1`}><Menu size={18} /></button>
@@ -415,70 +378,105 @@ export default function Home() {
           </div>
         </header>
 
+        {/* 북마크 패널 */}
         {showMainBM && (
-          <div className={`${dark ? 'bg-[#111]' : 'bg-[#f8faff]'} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto animate-fadeIn flex-shrink-0`}>
+          <div className={`${dark ? 'bg-[#111]' : 'bg-[#f8faff]'} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0`}>
             <p className="text-[10px] text-[#4a9eff] mb-1">메인 북마크</p>
             {mainBMs.length === 0 ? <p className={`text-xs ${text3}`}>북마크 없음</p> :
-              mainBMs.map((m) => (<button key={m.id} onClick={() => { setShowMainBM(false); setTimeout(() => document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className={`block w-full text-left text-xs ${text3} py-1 truncate`}>📌 {m.question}</button>))}
+              mainBMs.map((m) => (<button key={m.id} onClick={() => { setShowMainBM(false); setTimeout(() => document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }}
+                className={`block w-full text-left text-xs ${text3} py-1 truncate`}>📌 {m.question}</button>))}
           </div>
         )}
         {showSubBM && (
-          <div className={`${dark ? 'bg-[#111]' : 'bg-[#fffbf0]'} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto animate-fadeIn flex-shrink-0`}>
+          <div className={`${dark ? 'bg-[#111]' : 'bg-[#fffbf0]'} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0`}>
             <p className="text-[10px] text-[#f59e0b] mb-1">팝업 북마크</p>
             {subBMs.length === 0 ? <p className={`text-xs ${text3}`}>팝업 북마크 없음</p> :
-              subBMs.map((m) => (<button key={m.id} onClick={() => { setActiveSubId(m.subId); setPopMode(true); setShowSubBM(false); setTimeout(() => document.getElementById(`sub-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} className={`block w-full text-left text-xs ${text3} py-1 truncate`}>🔖 {m.question}</button>))}
+              subBMs.map((m) => (<button key={m.id} onClick={() => { setActiveSubId(m.subId); setPopMode(true); setShowSubBM(false); setTimeout(() => document.getElementById(`sub-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }}
+                className={`block w-full text-left text-xs ${text3} py-1 truncate`}>🔖 {m.question}</button>))}
           </div>
         )}
 
-        {/* 메인 채팅 */}
-        <main className={`flex-1 overflow-y-auto px-3 py-4 ${bg}`} style={showPopup && popupPos === 'bottom' && !isMobile ? { marginBottom: `${subPanelSize}vh` } : {}}>
+        {/* 메인 채팅 영역 */}
+        <main className={`flex-1 overflow-y-auto px-3 py-4 ${bg}`}>
           <div className="max-w-2xl mx-auto space-y-5">
             {!session || session.messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[40vh] text-center">
                 <Sparkles size={22} className="text-[#4a9eff] mb-3" />
                 <h2 className={`font-logo text-xl mb-1 ${text1}`}>POPchat</h2>
-                <p className={`${text3} text-xs leading-relaxed`}>질문하세요.<br/>⚡ 버튼 또는 [ {settings.popupShortcut} ] 키로 팝업 전환</p>
+                <p className={`${text3} text-xs leading-relaxed`}>질문하세요.<br />⚡ 버튼 또는 [ {settings.popupShortcut} ] 키로 팝업 전환</p>
               </div>
             ) : renderMessages(session.messages, 'msg-', false)}
             <div ref={messagesEndRef} />
           </div>
         </main>
 
-        {/* 입력창 (항상 하단) */}
-        {renderInput()}
-
-        {/* 모바일 팝업: 아래에서 올라옴 */}
-        {showPopup && isMobile && (
-            <div className={`fixed left-0 right-0 bottom-0 z-20 ${popBg} border-t border-[#f59e0b]/30 rounded-t-2xl flex flex-col shadow-2xl`}
-              style={{ height: `${subPanelSize}vh`, marginBottom: '130px' }}>
-              <div className="flex justify-center pt-2 pb-1 touch-none cursor-row-resize"
-                onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
-                <div className={`w-12 h-1.5 ${dark ? 'bg-[#444]' : 'bg-[#ccc]'} rounded-full`} />
-              </div>
-              {renderPopupPanel()}
+        {/* 모바일/아래 팝업: flex 안에서 일반 div로 (fixed 아님!) */}
+        {showPopup && (isMobile || popupPos === 'bottom') && (
+          <div className={`${bg} flex-shrink-0 flex flex-col border-t border-[#f59e0b] border-b border-b-[#f59e0b]`}
+            style={{ height: `${subPanelSize}vh` }}>
+            {/* 드래그 핸들 */}
+            <div className="flex justify-center py-1.5 touch-none cursor-row-resize flex-shrink-0"
+              onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}
+              onMouseDown={handleDragStart}>
+              <div className={`w-10 h-1 ${dark ? 'bg-[#444]' : 'bg-[#ddd]'} rounded-full`} />
             </div>
-        )}
-
-        {/* PC 아래 팝업 */}
-        {showPopup && popupPos === 'bottom' && !isMobile && (
-          <div className={`fixed left-0 right-0 bottom-[120px] z-30 ${popBg} border-t border-[#f59e0b]/30 flex flex-col shadow-2xl`}
-            style={{ height: `${subPanelSize}vh` }}
-            onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
-            <div className="flex justify-center pt-2 pb-1 cursor-row-resize"
-              onMouseDown={handleDragStart} onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
-              <div className={`w-12 h-1.5 ${dark ? 'bg-[#444]' : 'bg-[#ccc]'} rounded-full`} />
+            {/* 팝업 헤더 */}
+            <div className={`flex items-center justify-between px-3 py-1 flex-shrink-0`}>
+              <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
+              <button onClick={closePopup} className={`${text3} p-1`}><X size={13} /></button>
             </div>
-            {renderPopupPanel()}
+            {/* 팝업 메시지 */}
+            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+              {renderMessages(activeSub!.messages, 'sub-', true)}
+              <div ref={subMessagesEndRef} />
+            </div>
           </div>
         )}
+
+        {/* 입력창 (항상 맨 아래) */}
+        <div className={`px-3 pb-2 pt-2 ${bg} flex-shrink-0`}>
+          <div className={`flex flex-col px-3 py-2 max-w-2xl mx-auto border ${popMode ? 'border-[#f59e0b]' : `${border}`} rounded-2xl ${bg} transition-colors`}>
+            <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
+              placeholder={popMode ? '팝업 질문...' : '메시지 입력...'} rows={2}
+              className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30">
+              <div className="flex items-center gap-3">
+                <button onClick={togglePopMode}
+                  className={`p-2 rounded-full transition-colors ${popMode ? 'bg-[#f59e0b] text-white' : `${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} ${text3}`}`}>
+                  <Zap size={15} />
+                </button>
+                <button onClick={() => alert('파일 첨부 기능은 준비 중입니다.')}
+                  className={`p-2 rounded-full ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} ${text3} active:scale-95`}>
+                  <Plus size={15} />
+                </button>
+              </div>
+              <button onClick={handleUnifiedSend}
+                disabled={!input.trim() || store.isLoading || !!store.subChatLoading}
+                className={`p-2.5 ${popMode ? 'bg-[#f59e0b]' : 'bg-[#4a9eff]'} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
+                <Send size={15} className="text-white" />
+              </button>
+            </div>
+          </div>
+          <p className={`text-center text-[9px] mt-0.5 ${popMode ? 'text-[#f59e0b]' : text4}`}>
+            {popMode ? '⚡ 팝업 모드' : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}
+          </p>
+        </div>
       </div>
 
-      {/* 오른쪽 팝업 (PC) */}
+      {/* PC 오른쪽 팝업 */}
       {showPopup && popupPos === 'right' && !isMobile && (
-        <div className={`w-80 ${popBg} border-l ${border} flex flex-col flex-shrink-0 animate-fadeIn`}>
-          {renderPopupPanel()}
+        <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
+          <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
+            <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
+            <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+            {renderMessages(activeSub!.messages, 'sub-', true)}
+            <div ref={subMessagesEndRef} />
+          </div>
         </div>
       )}
     </div>
   );
-                } 
+}
