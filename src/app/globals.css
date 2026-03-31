@@ -1,3 +1,4 @@
+@import url('https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css');
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
@@ -50,3 +51,15 @@ html, body {
   50% { opacity: 0.6; }
 }
 .animate-pulse-subtle { animation: pulse-subtle 1.5s ease-in-out infinite; }
+.markdown-body h1 { font-size: 1.3em; font-weight: 700; margin: 12px 0 6px; }
+.markdown-body h2 { font-size: 1.15em; font-weight: 600; margin: 10px 0 5px; }
+.markdown-body h3 { font-size: 1.05em; font-weight: 600; margin: 8px 0 4px; }
+.markdown-body p { margin-bottom: 8px; line-height: 1.7; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin-bottom: 8px; }
+.markdown-body li { margin-bottom: 3px; }
+.markdown-body code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; padding: 1px 5px; border-radius: 4px; }
+.markdown-body pre { border-radius: 8px; padding: 12px; overflow-x: auto; margin: 8px 0; }
+.markdown-body pre code { padding: 0; }
+.markdown-body strong { font-weight: 600; }
+.markdown-body blockquote { border-left: 3px solid #4a9eff; padding-left: 12px; margin: 8px 0; opacity: 0.85; }
+.katex-display { overflow-x: auto; margin: 10px 0; }
