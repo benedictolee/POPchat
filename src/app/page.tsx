@@ -43,7 +43,7 @@ export default function Home() {
 
   useEffect(() => { store.loadSessions(); }, []);
   useEffect(() => { store.saveSessions(); }, [store.sessions]);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [session?.messages]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [session?.messages.length]);
   useEffect(() => { setTimeout(() => subMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }, [activeSubId, session?.subChats]);
 
   useEffect(() => {
