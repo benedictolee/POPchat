@@ -7,14 +7,18 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html, body {
+
+html {
+  height: 100%;
+}
+body {
   height: 100%;
   background-color: #ffffff;
   color: #1a1a1a;
   font-family: 'Noto Sans KR', -apple-system, sans-serif;
   -webkit-touch-callout: none;
+  overflow: hidden;
 }
-
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #f5f5f5; }
 ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
