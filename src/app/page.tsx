@@ -216,9 +216,9 @@ export default function Home() {
           </div>
         </div>
         {msg.answer && (
-          <button onClick={(e) => { e.stopPropagation(); isSub && activeSubId ? store.toggleSubBookmark(activeSubId, msg.id) : store.toggleBookmark(msg.id); }}
+          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); isSub && activeSubId ? store.toggleSubBookmark(activeSubId, msg.id) : store.toggleBookmark(msg.id); }}
             className={`ml-5 ${msg.bookmarked ? (isSub ? 'text-[#f59e0b]' : 'text-[#4a9eff]') : text4}`}>
-            {msg.bookmarked ? <BookmarkCheck size={isSub ? 12 : 14} /> : <Bookmark size={isSub ? 12 : 14} />}
+            {msg.bookmarked ? <span className="text-xs">●</span> : <span className="text-xs">○</span>}
           </button>
         )}
       </div>
@@ -449,17 +449,14 @@ export default function Home() {
 
         {/* 모바일 팝업: 아래에서 올라옴 */}
         {showPopup && isMobile && (
-          <>
-            <div className="fixed inset-0 bg-black/10 z-30" onClick={() => {}} />
-            <div className={`fixed left-0 right-0 z-40 ${popBg} border-t border-[#f59e0b]/30 rounded-t-2xl flex flex-col shadow-2xl`}
-              style={{ bottom: '140px', height: `${subPanelSize}vh` }}>
+            <div className={`fixed left-0 right-0 bottom-0 z-20 ${popBg} border-t border-[#f59e0b]/30 rounded-t-2xl flex flex-col shadow-2xl`}
+              style={{ height: `${subPanelSize}vh`, marginBottom: '130px' }}>
               <div className="flex justify-center pt-2 pb-1 touch-none cursor-row-resize"
                 onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
                 <div className={`w-12 h-1.5 ${dark ? 'bg-[#444]' : 'bg-[#ccc]'} rounded-full`} />
               </div>
               {renderPopupPanel()}
             </div>
-          </>
         )}
 
         {/* PC 아래 팝업 */}
