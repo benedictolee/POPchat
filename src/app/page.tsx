@@ -399,7 +399,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <p className={`text-center text-[9px] mt-0.5 pb-[env(safe-area-inset-bottom)] ${popMode ? 'text-[#f59e0b]' : text4}`}>
+                <p className={`text-center text-[9px] mt-0.5 ${popMode ? 'text-[#f59e0b]' : text4}`}>
                   {popMode ? '⚡ 팝업 모드' : '⚡ 탭하면 팝업 모드'}
                 </p>
               </div>
