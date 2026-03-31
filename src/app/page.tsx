@@ -44,8 +44,8 @@ export default function Home() {
   useEffect(() => { store.loadSessions(); }, []);
   useEffect(() => { store.saveSessions(); }, [store.sessions]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [session?.messages.length]);
-  useEffect(() => { setTimeout(() => subMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }, [activeSubId, session?.subChats]);
-
+  useEffect(() => { if (activeSubId && subMessagesEndRef.current) { const p = subMessagesEndRef.current.parentElement; if (p) p.scrollTop = p.scrollHeight; } }, [activeSubId, session?.subChats]);
+  
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
