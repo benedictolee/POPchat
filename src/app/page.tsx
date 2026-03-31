@@ -158,7 +158,7 @@ export default function Home() {
   const handleDragMove = (e: React.TouchEvent) => {
     if (!isDragging.current) return;
     e.preventDefault();
-    const dy = e.touches[0].clientY - dragStartY.current;
+    const dy = dragStartY.current - e.touches[0].clientY;
     const dvh = (dy / window.innerHeight) * 100;
     setSubPanelHeight(Math.max(15, Math.min(75, dragStartH.current + dvh)));
   };
@@ -342,22 +342,36 @@ export default function Home() {
           <div className="flex-1 flex flex-col min-w-0">
             {/* 모바일 팝업: 위에서 내려옴 */}
             {activeSub && !isWide && (
-              <div className={`${dark ? 'bg-[#0d0d0d]' : 'bg-[#fffdf8]'} border-b border-[#f59e0b]/20 flex flex-col`}
-                style={{ height: `${subPanelHeight}vh` }}>
-                <div className={`flex items-center justify-between px-3 py-1.5 border-b ${border} flex-shrink-0`}>
-                  <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
-                  <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
+              <>
+                <div className="fixed inset-0 bg-black/10 z-30" onClick={closePopup} />
+                <div className={`fixed bottom-0 left-0 right-0 z-40 ${dark ? 'bg-[#0d0d0d]' : 'bg-[#fffdf8]'} border-t border-[#f59e0b]/30 rounded-t-2xl flex flex-col shadow-2xl`}
+                  style={{ height: `${subPanelHeight}vh` }}>
+                  <div className="flex justify-center pt-2 pb-1 touch-none"
+                    onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
+                    <div className={`w-12 h-1.5 ${dark ? 'bg-[#444]' : 'bg-[#ccc]'} rounded-full`} />
+                  </div>
+                  <div className={`flex items-center justify-between px-3 py-1.5 border-b ${border} flex-shrink-0`}>
+                    <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
+                    <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+                    {renderMessages(activeSub.messages, 'sub-', true)}
+                    <div ref={subMessagesEndRef} />
+                  </div>
+                  <div className={`px-3 pb-3 pt-1 ${bg} rounded-b-none`}>
+                    <div className={`flex items-end gap-1.5 border ${dark ? 'border-[#2a2a2a] bg-[#1a1a1a]' : 'border-[#e5e5e5] bg-white'} rounded-xl px-2.5 py-1.5`}>
+                      <textarea value={input} onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
+                        placeholder="팝업 질문..." rows={1}
+                        className={`flex-1 bg-transparent ${text1} text-xs resize-none outline-none placeholder:text-[#bbb] max-h-20`} />
+                      <button onClick={handleUnifiedSend} disabled={!input.trim() || !!store.subChatLoading}
+                        className="p-1.5 bg-[#f59e0b] rounded-full disabled:opacity-30 active:scale-95 transition-transform">
+                        <Send size={11} className="text-white" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-                  {renderMessages(activeSub.messages, 'sub-', true)}
-                  <div ref={subMessagesEndRef} />
-                </div>
-                {/* 드래그 핸들 */}
-                <div className="flex justify-center py-2 cursor-row-resize flex-shrink-0 touch-none"
-                  onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}>
-                  <div className={`w-12 h-1.5 ${dark ? 'bg-[#444]' : 'bg-[#ccc]'} rounded-full`} />
-                </div>
-              </div>
+              </>
             )}
 
             {/* 메인 채팅 */}
