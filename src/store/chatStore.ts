@@ -27,6 +27,8 @@ export interface AppSettings {
   theme: 'light' | 'dark';
   language: 'ko' | 'en' | 'zh' | 'ja';
   customPrompt: string;
+  popupPosition: 'bottom' | 'left' | 'right';
+  popupShortcut: string;
 }
 
 const genId = () => Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
@@ -35,6 +37,8 @@ const defaultSettings: AppSettings = {
   theme: 'light',
   language: 'ko',
   customPrompt: '',
+  popupPosition: 'bottom',
+  popupShortcut: '\\',
 };
 
 interface AppStore {
