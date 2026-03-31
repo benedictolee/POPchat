@@ -376,7 +376,7 @@ export default function Home() {
 
             {/* 모바일 통합 입력 */}
             {!isWide && (
-              <div className={`px-3 pb-3 pt-2 ${bg} flex-shrink-0 sticky bottom-0 z-10`}>
+              <div className={`px-3 pb-3 pt-2 ${bg} flex-shrink-0`}>
                 <div className={`chat-input-area ${popMode ? 'pop-mode' : ''} flex flex-col px-3 py-2 max-w-2xl mx-auto`}>
                   <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
