@@ -376,7 +376,7 @@ export default function Home() {
 
             {/* 모바일 통합 입력 */}
             {!isWide && (
-              <div className={`px-3 pb-3 pt-2 ${bg} flex-shrink-0`}>
+              <div className={`px-3 pb-1 pt-2 ${bg} flex-shrink-0`}>
                 <div className={`chat-input-area ${popMode ? 'pop-mode' : ''} flex flex-col px-3 py-2 max-w-2xl mx-auto`}>
                   <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
@@ -399,7 +399,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <p className={`text-center text-[9px] mt-1 ${popMode ? 'text-[#f59e0b]' : text4}`}>
+                <p className={`text-center text-[9px] mt-0.5 pb-[env(safe-area-inset-bottom)] ${popMode ? 'text-[#f59e0b]' : text4}`}>
                   {popMode ? '⚡ 팝업 모드' : '⚡ 탭하면 팝업 모드'}
                 </p>
               </div>
