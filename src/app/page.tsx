@@ -1,5 +1,8 @@
 'use client';
 
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore, ChatMessage } from '@/store/chatStore';
 import {
@@ -193,8 +196,12 @@ export default function Home() {
         </div>
         <div className="flex gap-2 mb-1">
           <Sparkles size={isSub ? 11 : 13} className={`${isSub ? 'text-[#f59e0b]' : 'text-[#4a9eff]'} mt-0.5 flex-shrink-0`} />
-          <div className={`${isSub ? 'text-xs' : 'text-[13px]'} ${text2} whitespace-pre-wrap leading-relaxed`}>
-            {msg.answer || (
+          <div className={`${isSub ? 'text-xs' : 'text-[13px]'} ${text2} leading-relaxed markdown-body`}>
+            {msg.answer ? (
+              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                {msg.answer}
+              </ReactMarkdown>
+            ) : (
               <span className="flex gap-1">
                 <span className={`w-1.5 h-1.5 ${isSub ? 'bg-[#f59e0b]' : 'bg-[#4a9eff]'} rounded-full animate-pulse-subtle`} />
                 <span className={`w-1.5 h-1.5 ${isSub ? 'bg-[#f59e0b]' : 'bg-[#4a9eff]'} rounded-full animate-pulse-subtle [animation-delay:0.3s]`} />
