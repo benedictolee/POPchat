@@ -397,7 +397,7 @@ export default function Home() {
         )}
 
         {/* 메인 채팅 영역 */}
-        <main className={`flex-1 overflow-y-auto px-3 py-4 ${bg}`}>
+        <main className={`flex-1 overflow-y-auto px-3 py-4 ${bg} min-h-0`}>
           <div className="max-w-2xl mx-auto space-y-5">
             {!session || session.messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[40vh] text-center">
