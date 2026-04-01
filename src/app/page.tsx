@@ -43,6 +43,7 @@ export default function Home() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const isDrawingRef = useRef(false);
+  const [eraserMode, setEraserMode] = useState(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const dragStart = useRef(0);
@@ -139,7 +140,7 @@ const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
     lastPosRef.current = { x, y };
   };
 
-  const draw = (e: React.TouchEvent | React.MouseEvent) => {
+const draw = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isDrawingRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -147,16 +148,21 @@ const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
     const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
     const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
-    ctx.beginPath();
-    ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = dark ? '#ffffff' : '#1a1a1a';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
+    if (eraserMode) {
+      ctx.clearRect(x - 10, y - 10, 20, 20);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = dark ? '#ffffff' : '#1a1a1a';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
     lastPosRef.current = { x, y };
   };
+  
 
   const endDraw = () => { isDrawingRef.current = false; };
 
@@ -610,7 +616,8 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
               onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
               onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
             <div className="flex gap-2 mt-1">
-              <button onClick={clearCanvas} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>지우기</button>
+              <button onClick={() => setEraserMode(!eraserMode)} className={`text-xs px-2 py-1 rounded ${eraserMode ? 'bg-[#ef4444] text-white' : `${text3} ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}`}>{eraserMode ? '지우개 ON' : '지우개'}</button>
+              <button onClick={clearCanvas} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>전체삭제</button>
               <button onClick={sendCanvasImage} className="text-xs text-white px-2 py-1 rounded bg-[#4a9eff]">전송</button>
               <button onClick={() => imageInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>📷</button>
               <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>🖼️</button>
