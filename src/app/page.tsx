@@ -164,15 +164,19 @@ export default function Home() {
     isDragging.current = true;
     dragStart.current = 'touches' in e ? e.touches[0].clientY : e.clientY;
     dragStartSize.current = subPanelSize;
+    if (textareaRef.current) textareaRef.current.blur();
   };
-  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
+
+const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isDragging.current) return;
     if ('touches' in e) e.preventDefault();
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const dy = dragStart.current - clientY;
-    const dvh = (dy / window.innerHeight) * 100;
+    const containerHeight = document.querySelector('.flex-1.flex.flex-col.min-w-0')?.clientHeight || window.innerHeight;
+    const dvh = (dy / containerHeight) * 100;
     setSubPanelSize(Math.max(10, Math.min(60, dragStartSize.current + dvh)));
   };
+  
   const handleDragEnd = () => { isDragging.current = false; };
 
   const handleDelete = (id: string) => {
