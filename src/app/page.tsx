@@ -394,10 +394,31 @@ export default function Home() {
         {showSubBM && (
           <div className={`${dark ? 'bg-[#111]' : 'bg-[#fffbf0]'} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0`}>
             <p className="text-[10px] text-[#f59e0b] mb-1">팝업 북마크</p>
-            {subBMs.length === 0 ? <p className={`text-xs ${text3}`}>팝업 북마크 없음</p> :
-               subBMs.map((m) => (<button key={m.id} onClick={() => { setActiveSubId(m.subId); setPopMode(true); setShowSubBM(false); setTimeout(() => document.getElementById(`sub-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }}
-            className={`block w-full text-left text-xs ${text3} py-1 truncate`}>🔖 {m.question}</button>))} 
-              </div>
+            {subBMs.length === 0 ? (
+              <p className={`text-xs ${text3}`}>팝업 북마크 없음</p>
+            ) : (
+              subBMs.map((m) => (
+                <button key={m.id} onClick={() => {
+                  setActiveSubId(m.subId);
+                  setPopMode(true);
+                  setShowSubBM(false);
+                  setTimeout(() => {
+                    const target = document.getElementById(`sub-${m.id}`);
+                    const container = subMessagesEndRef.current?.parentElement;
+                    if (target && container) {
+                      const targetRect = target.getBoundingClientRect();
+                      const containerRect = container.getBoundingClientRect();
+                      const scrollAmount = targetRect.top - containerRect.top - (containerRect.height / 2) + (targetRect.height / 2);
+                      container.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+                    }
+                  }, 100);
+                }}
+                  className={`block w-full text-left text-xs ${text3} py-1 truncate`}>
+                  🔖 {m.question}
+                </button>
+              ))
+            )}
+          </div>
         )}
 
         {/* 메인 채팅 영역 */}
