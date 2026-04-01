@@ -141,17 +141,21 @@ export default function Home() {
   };
 
   const togglePopMode = () => {
-    if (!popMode && !activeSubId) {
-      ensureSession();
-      const context = buildContext();
-      const subId = store.openSubChat(context, '');
-      setActiveSubId(subId);
+    if (!popMode) {
+      const lastSub = session?.subChats[session.subChats.length - 1];
+      if (lastSub) {
+        setActiveSubId(lastSub.id);
+      } else {
+        ensureSession();
+        const context = buildContext();
+        const subId = store.openSubChat(context, '');
+        setActiveSubId(subId);
+      }
     }
     setPopMode(!popMode);
   };
 
   const closePopup = () => {
-    if (activeSubId) store.closeSubChat(activeSubId);
     setActiveSubId(null);
     setPopMode(false);
   };
@@ -176,7 +180,7 @@ export default function Home() {
     else { setConfirmDelete(id); setTimeout(() => setConfirmDelete(null), 3000); }
   };
 
-  const activeSub = session?.subChats.find((s) => s.id === activeSubId && s.isOpen);
+  const activeSub = session?.subChats.find((s) => s.id === activeSubId);
   const mainBMs = session?.messages.filter((m) => m.bookmarked) || [];
   const subBMs = session?.subChats.flatMap((sc) => sc.messages.filter((m) => m.bookmarked).map((m) => ({ ...m, subId: sc.id }))) || [];
   const filteredSessions = searchQuery ? store.sessions.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()) || s.messages.some((m) => m.question.toLowerCase().includes(searchQuery.toLowerCase()))) : store.sessions;
