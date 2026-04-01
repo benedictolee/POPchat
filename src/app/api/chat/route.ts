@@ -12,8 +12,8 @@ const langMap: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, context, language, customPrompt } = await req.json();
-    if (!message) {
+    const { message, context, language, customPrompt, image } = await req.json();
+    if (!message && !image) {
       return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
     }
 
@@ -26,10 +26,22 @@ export async function POST(req: NextRequest) {
     let prompt = '';
     if (systemParts) prompt += systemParts + '\n';
     if (context) prompt += `이전 대화 맥락:\n${context}\n\n`;
-    prompt += message;
+    if (message) prompt += message;
+
+    const parts: any[] = [{ text: prompt || '이 손글씨/수식을 읽고 답변해주세요.' }];
+
+    if (image) {
+      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+      parts.push({
+        inlineData: {
+          mimeType: 'image/png',
+          data: base64Data,
+        },
+      });
+    }
 
     const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts }],
       generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
     });
 
@@ -38,4 +50,4 @@ export async function POST(req: NextRequest) {
     console.error('Chat API Error:', error);
     return NextResponse.json({ error: 'AI 응답 생성 중 오류가 발생했습니다.' }, { status: 500 });
   }
-}
+} 
