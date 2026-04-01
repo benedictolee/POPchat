@@ -43,7 +43,7 @@ export default function Home() {
 
   useEffect(() => { store.loadSessions(); }, []);
   useEffect(() => { store.saveSessions(); }, [store.sessions]);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [session?.messages.length]);
+  useEffect(() => { if (messagesEndRef.current) { const p = messagesEndRef.current.parentElement; if (p) p.scrollTop = p.scrollHeight; } }, [session?.messages.length]);
   useEffect(() => { if (activeSubId && subMessagesEndRef.current) { const p = subMessagesEndRef.current.parentElement; if (p) p.scrollTop = p.scrollHeight; } }, [activeSubId, session?.subChats]);
   
   useEffect(() => {
