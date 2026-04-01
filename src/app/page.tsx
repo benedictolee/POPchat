@@ -395,7 +395,7 @@ export default function Home() {
           <div className={`${dark ? 'bg-[#111]' : 'bg-[#fffbf0]'} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0`}>
             <p className="text-[10px] text-[#f59e0b] mb-1">팝업 북마크</p>
             {subBMs.length === 0 ? <p className={`text-xs ${text3}`}>팝업 북마크 없음</p> :
-              subBMs.map((m) => (<button key={m.id} onClick={() => { setActiveSubId(m.subId); setPopMode(true); setShowSubBM(false); setTimeout(() => { const el = document.getElementById(`sub-${m.id}`); if (el) { const p = el.closest('.overflow-y-auto'); if (p) { const top = el.offsetTop - p.offsetTop - 50; p.scrollTop = top; } } }, 100); }}
+               subBMs.map((m) => (<button key={m.id} onClick={() => { setActiveSubId(m.subId); setPopMode(true); setShowSubBM(false); setTimeout(() => document.getElementById(`sub-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }}
                 className={`block w-full text-left text-xs ${text3} py-1 truncate`}>🔖 {m.question}</button>))} 
               </div>
         )}
