@@ -396,8 +396,8 @@ export default function Home() {
             <p className="text-[10px] text-[#f59e0b] mb-1">팝업 북마크</p>
             {subBMs.length === 0 ? <p className={`text-xs ${text3}`}>팝업 북마크 없음</p> :
               subBMs.map((m) => (<button key={m.id} onClick={() => { setActiveSubId(m.subId); setPopMode(true); setShowSubBM(false); setTimeout(() => { const el = document.getElementById(`sub-${m.id}`); if (el) { const p = el.closest('.overflow-y-auto'); if (p) { const top = el.offsetTop - p.offsetTop - 50; p.scrollTop = top; } } }, 100); }}
-            className={`block w-full text-left text-xs ${text3} py-1 truncate`}>🔖 {m.question}</button>))}
-          </div>
+                className={`block w-full text-left text-xs ${text3} py-1 truncate`}>🔖 {m.question}</button>))} 
+              </div>
         )}
 
         {/* 메인 채팅 영역 */}
