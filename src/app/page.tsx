@@ -41,6 +41,7 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
@@ -231,6 +232,32 @@ const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
     };
     reader.readAsDataURL(file);
   };
+
+const sendDocFile = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setShowCanvas(false);
+      ensureSession();
+      const msgId = genId();
+      const question = input.trim() || `(파일 첨부: ${file.name})`;
+      setInput('');
+      store.addMessage({ id: msgId, question, answer: '', bookmarked: false });
+      store.updateMessage(msgId, { question });
+      store.setLoading(true);
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: question + `\n\n[첨부 파일: ${file.name}]`, language: settings.language, customPrompt: settings.customPrompt, image: file.type.startsWith('image/') ? base64 : undefined }),
+        });
+        const data = await res.json();
+        store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
+      } catch { store.updateMessage(msgId, { answer: '⚠️ 네트워크 오류' }); }
+      finally { store.setLoading(false); }
+    };
+    reader.readAsDataURL(file);
+  };
+  
   
   const handleUnifiedSend = () => {
     if (!input.trim()) return;
@@ -587,11 +614,14 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
               <button onClick={sendCanvasImage} className="text-xs text-white px-2 py-1 rounded bg-[#4a9eff]">전송</button>
               <button onClick={() => imageInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>📷</button>
               <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>🖼️</button>
+              <button onClick={() => docInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>📎</button>
             </div>
             <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden"
               onChange={(e) => { if (e.target.files?.[0]) sendImageFile(e.target.files[0]); e.target.value = ''; }} />
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => { if (e.target.files?.[0]) sendImageFile(e.target.files[0]); e.target.value = ''; }} />
+            <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.csv" className="hidden"
+              onChange={(e) => { if (e.target.files?.[0]) sendDocFile(e.target.files[0]); e.target.value = ''; }} />
           </div>
         )}
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
