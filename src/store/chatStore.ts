@@ -140,11 +140,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
     return subId;
   },
 
-  closeSubChat: (subId) =>
+closeSubChat: (subId) =>
     set((s) => ({
       sessions: s.sessions.map((ses) =>
         ses.id === s.currentSessionId
-          ? { ...ses, subChats: ses.subChats.map((sc) => (sc.id === subId ? { ...sc, isOpen: false } : sc)) }
+          ? { ...ses, subChats: ses.subChats.map((sc) => (sc.id === subId ? { ...sc, isOpen: true } : sc)) }
           : ses
       ),
     })),
