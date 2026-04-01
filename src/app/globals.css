@@ -77,3 +77,8 @@ html, body {
   font-family: 'Noto Sans KR', -apple-system, sans-serif;
   -webkit-touch-callout: none;
 }
+
+.drawing-canvas {
+  touch-action: none;
+  cursor: crosshair;
+}
