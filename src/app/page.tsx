@@ -37,6 +37,10 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [shortcutInput, setShortcutInput] = useState(false);
+  const [showCanvas, setShowCanvas] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+  const lastPosRef = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const dragStart = useRef(0);
   const dragStartSize = useRef(35);
@@ -122,6 +126,84 @@ export default function Home() {
     finally { store.setSubChatLoading(null); }
   };
 
+const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
+    isDrawingRef.current = true;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
+    lastPosRef.current = { x, y };
+  };
+
+  const draw = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!isDrawingRef.current || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = dark ? '#ffffff' : '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    lastPosRef.current = { x, y };
+  };
+
+  const endDraw = () => { isDrawingRef.current = false; };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const sendCanvasImage = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const imageData = canvas.toDataURL('image/png');
+    setShowCanvas(false);
+    clearCanvas();
+    ensureSession();
+    const msgId = genId();
+    const question = input.trim() || '(필기 입력)';
+    setInput('');
+    if (popMode && activeSubId) {
+      store.addSubMessage(activeSubId, { id: msgId, question, answer: '', bookmarked: false });
+      store.setSubChatLoading(activeSubId);
+      const sub = session?.subChats.find((s) => s.id === activeSubId);
+      const subContext = sub ? sub.parentContext + '\n\n' + sub.messages.slice(-4).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join('\n\n') : '';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: question, context: subContext, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
+        });
+        const data = await res.json();
+        store.updateSubMessage(activeSubId, msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
+      } catch { store.updateSubMessage(activeSubId, msgId, { answer: '⚠️ 네트워크 오류' }); }
+      finally { store.setSubChatLoading(null); }
+    } else {
+      store.addMessage({ id: msgId, question, answer: '', bookmarked: false });
+      store.updateMessage(msgId, { question });
+      store.setLoading(true);
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: question, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
+        });
+        const data = await res.json();
+        store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
+      } catch { store.updateMessage(msgId, { answer: '⚠️ 네트워크 오류' }); }
+      finally { store.setLoading(false); }
+    }
+  };
+  
   const handleUnifiedSend = () => {
     if (!input.trim()) return;
     const question = input.trim();
@@ -465,6 +547,19 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
         {/* 입력창 (항상 맨 아래) */}
         <div className={`px-3 pb-1 pt-2 ${bg} flex-shrink-0`}>
           <div className={`flex flex-col px-3 py-2 max-w-2xl mx-auto border ${popMode ? 'border-[#f59e0b]' : `${border}`} rounded-2xl ${bg} transition-colors`}>
+            {showCanvas && (
+          <div className="mb-2">
+            <canvas ref={canvasRef} width={600} height={200}
+              className={`drawing-canvas w-full rounded-lg border ${dark ? 'border-[#2a2a2a] bg-[#111]' : 'border-[#e5e5e5] bg-[#fafafa]'}`}
+              style={{ height: '150px' }}
+              onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+              onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+            <div className="flex gap-2 mt-1">
+              <button onClick={clearCanvas} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>지우기</button>
+              <button onClick={sendCanvasImage} className="text-xs text-white px-2 py-1 rounded bg-[#4a9eff]">전송</button>
+            </div>
+          </div>
+        )}
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
               placeholder={popMode ? '팝업 질문...' : '메시지 입력...'} rows={2}
@@ -475,10 +570,10 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
                   className={`p-2 rounded-full transition-colors ${popMode ? 'bg-[#f59e0b] text-white' : `${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} ${text3}`}`}>
                   <Zap size={15} />
                 </button>
-                <button onClick={() => alert('파일 첨부 기능은 준비 중입니다.')}
-                  className={`p-2 rounded-full ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} ${text3} active:scale-95`}>
-                  <Plus size={15} />
-                </button>
+                <button onClick={() => setShowCanvas(!showCanvas)}
+              className={`p-2 rounded-full ${showCanvas ? 'bg-[#4a9eff] text-white' : `${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} ${text3}`} active:scale-95`}>
+              <Plus size={15} />
+            </button>
               </div>
               <button onClick={handleUnifiedSend}
                 disabled={!input.trim() || store.isLoading || !!store.subChatLoading}
