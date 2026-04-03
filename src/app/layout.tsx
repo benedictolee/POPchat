@@ -13,3 +13,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+// layout.tsx 수정 예시
+export const metadata: Metadata = {
+  title: "POPchat",
+  description: "한 화면에서 여러 질문을 해보세요.",
+  // 아래 부분을 추가하세요! 복사한 content 값만 따옴표 안에 넣으면 됩니다.
+  verification: {
+    google: "GF572f_q5kWMiUk88gxJJTkj1B5ZO99Nmvccp1-v46o"
+  },
+};
+
