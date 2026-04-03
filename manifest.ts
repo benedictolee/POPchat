@@ -12,12 +12,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#ffffff',
     icons: [
       {
-        src: 'https://ui-avatars.com/api/?name=P&background=ffffff&color=eab308&size=192&bold=true',
+        src: '/pop-icon-192.png',
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: '/pop-icon.png',
+        src: '/pop-icon-512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
