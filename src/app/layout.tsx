@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
 
@@ -16,6 +17,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body className="bg-white text-[#1a1a1a]" style={{ height: '100dvh', overflow: 'hidden' }}>
         {children}
+        {/* 서비스 워커를 안전하게 등록하는 스크립트 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js');
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
