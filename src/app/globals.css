@@ -14,9 +14,9 @@ html, body {
   font-family: 'Noto Sans KR', -apple-system, sans-serif;
   -webkit-touch-callout: none;
   overflow: hidden;
-  max-width: 100vw;
   position: fixed;
   width: 100%;
+  max-width: 100vw;
 }
 
 #__next {
@@ -79,4 +79,4 @@ html, body {
 .drawing-canvas {
   touch-action: none;
   cursor: crosshair;
-}
+} 
