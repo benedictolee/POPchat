@@ -1,3 +1,4 @@
+// src/app/manifest.ts
 import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
@@ -11,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#ffffff',
     icons: [
       {
-        src: '/pop-icon.png',
+        src: 'https://ui-avatars.com/api/?name=P&background=ffffff&color=eab308&size=192&bold=true',
         sizes: '192x192',
         type: 'image/png',
       },
