@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore, ChatMessage } from "@/store/chatStore";
+import { supabase } from "@/utils/supabase";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -48,6 +49,37 @@ export default function Home() {
   const dragStart = useRef(0);
   const dragStartSize = useRef(35);
 
+    // Auth 상태
+  const [showAuth, setShowAuth] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user));
+    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+    return () => authListener.subscription.unsubscribe();
+  }, []);
+
+  const handleSignUp = async () => {
+    const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+    if (error) alert("가입 실패: " + error.message);
+    else { alert("가입 성공! 로그인 되었습니다."); setShowAuth(false); }
+  };
+
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+    if (error) alert("로그인 실패: " + error.message);
+    else setShowAuth(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  
   // [FIX#1] 스크롤 추적용
   const prevMsgLenRef = useRef(0);
   const prevSubChatsRef = useRef(0);
@@ -520,10 +552,15 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <div className={`p-2 border-t ${border} flex items-center justify-between`}>
-          <button className={`flex items-center gap-2 px-3 py-2 text-xs ${text3}`}><User size={14} /> 로그인</button>
+                <div className={`p-2 border-t ${border} flex items-center justify-between`}>
+          {currentUser ? (
+            <button onClick={handleLogout} className={`flex items-center gap-2 px-3 py-2 text-xs text-red-500`}><User size={14} /> 로그아웃</button>
+          ) : (
+            <button onClick={() => { setShowAuth(true); setShowSidebar(false); }} className={`flex items-center gap-2 px-3 py-2 text-xs ${text3}`}><User size={14} /> 로그인</button>
+          )}
           <button onClick={() => { setShowSettings(true); setShowSidebar(false); }} className={`p-2 ${text3}`}><Settings size={15} /></button>
         </div>
+
       </div>
 
       {showPopup && popupPos === "left" && !isMobile && (
@@ -697,7 +734,21 @@ export default function Home() {
             <div ref={subMessagesEndRef} />
           </div>
         </div>
+            {/* 로그인 모달 */}
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className={`${bg} border ${border} rounded-2xl p-5 w-full max-w-sm flex flex-col gap-4 animate-fadeIn`}>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className={`font-medium ${text1}`}>로그인 / 회원가입</h3>
+              <button onClick={() => setShowAuth(false)} className={text3}><X size={16} /></button>
+            </div>
+            <input type="email" placeholder="이메일" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
+            <input type="password" placeholder="비밀번호" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
+            <div className="flex gap-2 mt-2">
+              <button onClick={handleLogin} className="flex-1 bg-[#4a9eff] text-white py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform">로그인</button>
+              <button onClick={handleSignUp} className={`flex-1 border ${border} ${text1} py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform`}>회원가입</button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
-  );
-}
+
