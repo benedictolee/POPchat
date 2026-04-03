@@ -723,7 +723,7 @@ export default function Home() {
         </div>
       </div>
 
-      {showPopup && popupPos === "right" && !isMobile && (
+            {showPopup && popupPos === "right" && !isMobile && (
         <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
           <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
             <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
@@ -734,7 +734,9 @@ export default function Home() {
             <div ref={subMessagesEndRef} />
           </div>
         </div>
-            {/* 로그인 모달 */}
+      )}
+
+      {/* 로그인 모달 */}
       {showAuth && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className={`${bg} border ${border} rounded-2xl p-5 w-full max-w-sm flex flex-col gap-4 animate-fadeIn`}>
@@ -751,7 +753,8 @@ export default function Home() {
           </div>
         </div>
       )}
-      </div>
+
+    </div>
   );
 }
 
