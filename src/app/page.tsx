@@ -7,7 +7,7 @@ import rehypeKatex from "rehype-katex";
 import {
   Send, Sparkles, Bookmark, BookmarkCheck, Plus, MessageSquare,
   X, Menu, PanelLeftOpen, PanelRightOpen, Trash2,
-  Settings, Search, User, ChevronLeft, Moon, Sun, Globe, MessageCircle, Zap
+  Settings, Search, User, ChevronLeft, Moon, Sun, Globe, MessageCircle, Zap, Undo2
 } from "lucide-react";
 
 const genId = () => Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
@@ -48,14 +48,17 @@ export default function Home() {
   const dragStart = useRef(0);
   const dragStartSize = useRef(35);
 
-  // [FIX] 스크롤: 이전 메시지 수를 추적해서 실제 추가 시에만 스크롤
+  // [FIX#1] 스크롤 추적용
   const prevMsgLenRef = useRef(0);
   const prevSubChatsRef = useRef(0);
+
+  // [FIX#4] Undo 히스토리
+  const strokeHistoryRef = useRef<ImageData[]>([]);
 
   useEffect(() => { store.loadSessions(); }, []);
   useEffect(() => { store.saveSessions(); }, [store.sessions]);
 
-  // [FIX] 메인 채팅 스크롤 - 메시지가 실제로 추가됐을 때만
+  // [FIX#1] 메인 채팅 스크롤 - 메시지가 실제로 추가됐을 때만
   useEffect(() => {
     const curLen = session?.messages.length ?? 0;
     if (curLen > prevMsgLenRef.current) {
@@ -67,7 +70,7 @@ export default function Home() {
     prevMsgLenRef.current = curLen;
   }, [session?.messages.length]);
 
-  // [FIX] 서브 채팅 스크롤 - 서브챗 메시지가 실제로 추가됐을 때만
+  // [FIX#1] 서브 채팅 스크롤 - 서브챗 메시지가 실제로 추가됐을 때만
   useEffect(() => {
     if (!activeSubId || !session) return;
     const totalSubMsgs = session.subChats.reduce((a, sc) => a + sc.messages.length, 0);
@@ -122,58 +125,90 @@ export default function Home() {
     return session.messages.slice(-6).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join("\n\n");
   }, [session]);
 
-  const sendToApi = async (message: string, context?: string) => {
+  // [FIX#5] sendToApi에 image 파라미터 추가
+  const sendToApi = async (message: string, context?: string, image?: string) => {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt }),
+      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image }),
     });
     return res.json();
   };
 
-  const handleSendMain = async (question: string) => {
+  // [FIX#5] image 파라미터 추가
+  const handleSendMain = async (question: string, image?: string) => {
     ensureSession();
     const msgId = genId();
     store.addMessage({ id: msgId, question, answer: "", bookmarked: false });
     store.updateMessage(msgId, { question });
     store.setLoading(true);
     try {
-      const data = await sendToApi(question);
+      const data = await sendToApi(question, undefined, image);
       store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
     } catch { store.updateMessage(msgId, { answer: "⚠️ 네트워크 오류" }); }
     finally { store.setLoading(false); }
   };
 
-  const handleSendSub = async (question: string, subId: string) => {
+  // [FIX#5] image 파라미터 추가
+  const handleSendSub = async (question: string, subId: string, image?: string) => {
     const msgId = genId();
     store.addSubMessage(subId, { id: msgId, question, answer: "", bookmarked: false });
     store.setSubChatLoading(subId);
     const sub = session?.subChats.find((s) => s.id === subId);
     const subContext = sub ? sub.parentContext + "\n\n" + sub.messages.slice(-4).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join("\n\n") : "";
     try {
-      const data = await sendToApi(question, subContext);
+      const data = await sendToApi(question, subContext, image);
       store.updateSubMessage(subId, msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
     } catch { store.updateSubMessage(subId, msgId, { answer: "⚠️ 네트워크 오류" }); }
     finally { store.setSubChatLoading(null); }
   };
 
+  // [FIX#4] stroke 시작 전 현재 상태 저장
+  const saveStroke = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    strokeHistoryRef.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    if (strokeHistoryRef.current.length > 50) strokeHistoryRef.current.shift();
+  };
+
+  // [FIX#4] undo
+  const undoStroke = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    strokeHistoryRef.current.pop();
+    const prev = strokeHistoryRef.current[strokeHistoryRef.current.length - 1];
+    if (prev) ctx.putImageData(prev, 0, 0);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  // [FIX canvas 좌표] scaleX/scaleY 적용
   const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
+    saveStroke();
     isDrawingRef.current = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = ("touches" in e ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = ("touches" in e ? e.touches[0].clientY : e.clientY) - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (("touches" in e ? e.touches[0].clientX : e.clientX) - rect.left) * scaleX;
+    const y = (("touches" in e ? e.touches[0].clientY : e.clientY) - rect.top) * scaleY;
     lastPosRef.current = { x, y };
   };
 
+  // [FIX canvas 좌표] scaleX/scaleY 적용
   const draw = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isDrawingRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    const x = ("touches" in e ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = ("touches" in e ? e.touches[0].clientY : e.clientY) - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (("touches" in e ? e.touches[0].clientX : e.clientX) - rect.left) * scaleX;
+    const y = (("touches" in e ? e.touches[0].clientY : e.clientY) - rect.top) * scaleY;
     if (eraserMode) {
       ctx.clearRect(x - 10, y - 10, 20, 20);
     } else {
@@ -196,46 +231,18 @@ export default function Home() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokeHistoryRef.current = [];
   };
 
-  const sendCanvasImage = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const imageData = canvas.toDataURL("image/png");
-    setShowCanvas(false);
-    clearCanvas();
-    ensureSession();
-    const msgId = genId();
-    const question = input.trim() || "(필기 입력)";
-    setInput("");
-    if (popMode && activeSubId) {
-      store.addSubMessage(activeSubId, { id: msgId, question, answer: "", bookmarked: false });
-      store.setSubChatLoading(activeSubId);
-      const sub = session?.subChats.find((s) => s.id === activeSubId);
-      const subContext = sub ? sub.parentContext + "\n\n" + sub.messages.slice(-4).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join("\n\n") : "";
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: question, context: subContext, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
-        });
-        const data = await res.json();
-        store.updateSubMessage(activeSubId, msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-      } catch { store.updateSubMessage(activeSubId, msgId, { answer: "⚠️ 네트워크 오류" }); }
-      finally { store.setSubChatLoading(null); }
-    } else {
-      store.addMessage({ id: msgId, question, answer: "", bookmarked: false });
-      store.updateMessage(msgId, { question });
-      store.setLoading(true);
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: question, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
-        });
-        const data = await res.json();
-        store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-      } catch { store.updateMessage(msgId, { answer: "⚠️ 네트워크 오류" }); }
-      finally { store.setLoading(false); }
-    }
+  // [FIX#5] 캔버스 이미지 추출 헬퍼
+  const getCanvasImage = (): string | undefined => {
+    if (!showCanvas || !canvasRef.current) return undefined;
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return undefined;
+    const pixels = ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height).data;
+    const hasContent = pixels.some((v, i) => i % 4 === 3 && v > 0);
+    if (!hasContent) return undefined;
+    return canvasRef.current.toDataURL("image/png");
   };
 
   const sendImageFile = async (file: File) => {
@@ -251,11 +258,7 @@ export default function Home() {
       store.updateMessage(msgId, { question });
       store.setLoading(true);
       try {
-        const res = await fetch("/api/chat", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: question, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
-        });
-        const data = await res.json();
+        const data = await sendToApi(question, undefined, imageData);
         store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
       } catch { store.updateMessage(msgId, { answer: "⚠️ 네트워크 오류" }); }
       finally { store.setLoading(false); }
@@ -288,21 +291,28 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
+  // [FIX#3,5] 캔버스+텍스트 통합 전송
   const handleUnifiedSend = () => {
-    if (!input.trim()) return;
-    const question = input.trim();
+    const canvasImage = getCanvasImage();
+    const hasText = input.trim().length > 0;
+    if (!hasText && !canvasImage) return;
+    const question = input.trim() || "(필기 입력)";
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (canvasImage) {
+      clearCanvas();
+      setShowCanvas(false);
+    }
     if (popMode && activeSubId) {
-      handleSendSub(question, activeSubId);
+      handleSendSub(question, activeSubId, canvasImage);
     } else if (popMode && !activeSubId) {
       ensureSession();
       const context = buildContext();
       const subId = store.openSubChat(context, question);
       setActiveSubId(subId);
-      handleSendSub(question, subId);
+      handleSendSub(question, subId, canvasImage);
     } else {
-      handleSendMain(question);
+      handleSendMain(question, canvasImage);
     }
   };
 
@@ -624,9 +634,9 @@ export default function Home() {
               onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
               onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
             <div className="flex gap-2 mt-1">
+              <button onClick={undoStroke} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} flex items-center gap-1`}><Undo2 size={12} />되돌리기</button>
               <button onClick={() => setEraserMode(!eraserMode)} className={`text-xs px-2 py-1 rounded ${eraserMode ? "bg-[#ef4444] text-white" : `${text3} ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}`}>{eraserMode ? "지우개 ON" : "지우개"}</button>
               <button onClick={clearCanvas} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>전체삭제</button>
-              <button onClick={sendCanvasImage} className="text-xs text-white px-2 py-1 rounded bg-[#4a9eff]">전송</button>
               <button onClick={() => imageInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📷</button>
               <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>🖼️</button>
               <button onClick={() => docInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📎</button>
@@ -640,7 +650,7 @@ export default function Home() {
           </div>
         )}
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
               placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
               className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30">
@@ -655,7 +665,7 @@ export default function Home() {
             </button>
               </div>
               <button onClick={handleUnifiedSend}
-                disabled={!input.trim() || store.isLoading || !!store.subChatLoading}
+                disabled={(!input.trim() && !showCanvas) || store.isLoading || !!store.subChatLoading}
                 className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
                 <Send size={15} className="text-white" />
               </button>
