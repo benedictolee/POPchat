@@ -7,13 +7,13 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-
 html, body {
   height: 100%;
   background-color: #ffffff;
   color: #1a1a1a;
   font-family: 'Noto Sans KR', -apple-system, sans-serif;
   -webkit-touch-callout: none;
+  overflow-x: hidden;
 }
 
 #__next {
@@ -69,14 +69,6 @@ html, body {
 .markdown-body strong { font-weight: 600; }
 .markdown-body blockquote { border-left: 3px solid #4a9eff; padding-left: 12px; margin: 8px 0; opacity: 0.85; }
 .katex-display { overflow-x: auto; margin: 10px 0; }
-
-html, body {
-  height: 100%;
-  background-color: #ffffff;
-  color: #1a1a1a;
-  font-family: 'Noto Sans KR', -apple-system, sans-serif;
-  -webkit-touch-callout: none;
-}
 
 .drawing-canvas {
   touch-action: none;
