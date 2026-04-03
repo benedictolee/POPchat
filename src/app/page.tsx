@@ -558,7 +558,16 @@ export default function Home() {
           <div className={`${dark ? "bg-[#111]" : "bg-[#f8faff]"} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0`}>
             <p className="text-[10px] text-[#4a9eff] mb-1">메인 북마크</p>
             {mainBMs.length === 0 ? <p className={`text-xs ${text3}`}>북마크 없음</p> :
-              mainBMs.map((m) => (<button key={m.id} onClick={() => { setShowMainBM(false); setTimeout(() => document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }}
+              mainBMs.map((m) => (<button key={m.id} onClick={() => { setShowMainBM(false); setTimeout(() => {
+                    const target = document.getElementById(`msg-${m.id}`);
+                    const container = messagesEndRef.current?.parentElement;
+                    if (target && container) {
+                      const targetRect = target.getBoundingClientRect();
+                      const containerRect = container.getBoundingClientRect();
+                      const scrollAmount = targetRect.top - containerRect.top - (containerRect.height / 2) + (targetRect.height / 2);
+                      container.scrollBy({ top: scrollAmount, behavior: "smooth" });
+                    }
+                  }, 100); }}
                 className={`block w-full text-left text-xs ${text3} py-1 truncate`}>📌 {m.question}</button>))}
           </div>
         )}
