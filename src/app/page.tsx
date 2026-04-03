@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore, ChatMessage } from '@/store/chatStore';
 import ReactMarkdown from 'react-markdown';
@@ -8,19 +7,16 @@ import rehypeKatex from 'rehype-katex';
 import {
   Send, Sparkles, Bookmark, BookmarkCheck, Plus, MessageSquare,
   X, Menu, PanelLeftOpen, PanelRightOpen, Trash2,
-  Settings, Search, User, ChevronLeft, Moon, Sun, Globe, MessageCircle, Zap
+  Settings, Search, User, ChevronLeft, Moon, Sun, Globe, MessageCircle, Zap, Undo2
 } from 'lucide-react';
-
 const genId = () => Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
 const langNames: Record<string, string> = { ko: '한국어', en: 'English', zh: '中文', ja: '日本語' };
 const posNames: Record<string, string> = { bottom: '아래', left: '왼쪽', right: '오른쪽' };
-
 export default function Home() {
   const store = useAppStore();
   const session = store.getCurrentSession();
   const { settings } = store;
   const dark = settings.theme === 'dark';
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const subMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -48,32 +44,55 @@ export default function Home() {
   const isDragging = useRef(false);
   const dragStart = useRef(0);
   const dragStartSize = useRef(35);
+  const strokeHistoryRef = useRef<ImageData[]>([]);
+  const isUserScrollRef = useRef(false);
 
   useEffect(() => { store.loadSessions(); }, []);
   useEffect(() => { store.saveSessions(); }, [store.sessions]);
-  useEffect(() => { if (messagesEndRef.current) { const p = messagesEndRef.current.parentElement; if (p) p.scrollTop = p.scrollHeight; } }, [session?.messages.length]);
-  useEffect(() => { if (activeSubId && subMessagesEndRef.current) { const p = subMessagesEndRef.current.parentElement; if (p) p.scrollTop = p.scrollHeight; } }, [activeSubId, session?.subChats]);
-  
+
+  // 스크롤: 탭 복귀 시 무시
+  useEffect(() => {
+    const handler = () => {
+      if (document.hidden) isUserScrollRef.current = true;
+      else setTimeout(() => { isUserScrollRef.current = false; }, 500);
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, []);
+
+  useEffect(() => {
+    if (isUserScrollRef.current) return;
+    if (messagesEndRef.current) {
+      const p = messagesEndRef.current.parentElement;
+      if (p) p.scrollTop = p.scrollHeight;
+    }
+  }, [session?.messages.length]);
+
+  useEffect(() => {
+    if (isUserScrollRef.current) return;
+    if (activeSubId && subMessagesEndRef.current) {
+      const p = subMessagesEndRef.current.parentElement;
+      if (p) p.scrollTop = p.scrollHeight;
+    }
+  }, [activeSubId, session?.subChats]);
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
     }
   }, [input]);
-
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
   useEffect(() => {
     document.documentElement.style.backgroundColor = dark ? '#0a0a0a' : '#ffffff';
     document.body.style.backgroundColor = dark ? '#0a0a0a' : '#ffffff';
     document.body.style.color = dark ? '#ffffff' : '#1a1a1a';
   }, [dark]);
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (shortcutInput) return;
@@ -85,52 +104,79 @@ export default function Home() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [settings.popupShortcut, popMode, activeSubId, shortcutInput]);
-
   const ensureSession = useCallback(() => {
     if (!store.currentSessionId) return store.createSession();
     return store.currentSessionId;
   }, [store]);
-
   const buildContext = useCallback(() => {
     if (!session) return '';
     return session.messages.slice(-6).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join('\n\n');
   }, [session]);
-
-  const sendToApi = async (message: string, context?: string) => {
+  const sendToApi = async (message: string, context?: string, image?: string) => {
     const res = await fetch('/api/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt }),
+      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image }),
     });
     return res.json();
   };
 
-  const handleSendMain = async (question: string) => {
+  const getCanvasImage = (): string | undefined => {
+    if (!showCanvas || !canvasRef.current) return undefined;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return undefined;
+    const pixels = ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height).data;
+    const hasContent = pixels.some((v, i) => i % 4 === 3 && v > 0);
+    if (!hasContent) return undefined;
+    return canvasRef.current.toDataURL('image/png');
+  };
+
+  const handleSendMain = async (question: string, image?: string) => {
     ensureSession();
     const msgId = genId();
     store.addMessage({ id: msgId, question, answer: '', bookmarked: false });
     store.updateMessage(msgId, { question });
     store.setLoading(true);
     try {
-      const data = await sendToApi(question);
+      const data = await sendToApi(question, undefined, image);
       store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
     } catch { store.updateMessage(msgId, { answer: '⚠️ 네트워크 오류' }); }
     finally { store.setLoading(false); }
   };
-
-  const handleSendSub = async (question: string, subId: string) => {
+  const handleSendSub = async (question: string, subId: string, image?: string) => {
     const msgId = genId();
     store.addSubMessage(subId, { id: msgId, question, answer: '', bookmarked: false });
     store.setSubChatLoading(subId);
     const sub = session?.subChats.find((s) => s.id === subId);
     const subContext = sub ? sub.parentContext + '\n\n' + sub.messages.slice(-4).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join('\n\n') : '';
     try {
-      const data = await sendToApi(question, subContext);
+      const data = await sendToApi(question, subContext, image);
       store.updateSubMessage(subId, msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
     } catch { store.updateSubMessage(subId, msgId, { answer: '⚠️ 네트워크 오류' }); }
     finally { store.setSubChatLoading(null); }
   };
 
-const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
+  const saveStroke = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    strokeHistoryRef.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    if (strokeHistoryRef.current.length > 50) strokeHistoryRef.current.shift();
+  };
+
+  const undoStroke = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    strokeHistoryRef.current.pop();
+    const prev = strokeHistoryRef.current[strokeHistoryRef.current.length - 1];
+    if (prev) ctx.putImageData(prev, 0, 0);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
+    saveStroke();
     isDrawingRef.current = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -139,8 +185,7 @@ const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
     const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
     lastPosRef.current = { x, y };
   };
-
-const draw = (e: React.TouchEvent | React.MouseEvent) => {
+  const draw = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isDrawingRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -162,57 +207,14 @@ const draw = (e: React.TouchEvent | React.MouseEvent) => {
     }
     lastPosRef.current = { x, y };
   };
-  
-
   const endDraw = () => { isDrawingRef.current = false; };
-
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokeHistoryRef.current = [];
   };
-
-  const sendCanvasImage = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const imageData = canvas.toDataURL('image/png');
-    setShowCanvas(false);
-    clearCanvas();
-    ensureSession();
-    const msgId = genId();
-    const question = input.trim() || '(필기 입력)';
-    setInput('');
-    if (popMode && activeSubId) {
-      store.addSubMessage(activeSubId, { id: msgId, question, answer: '', bookmarked: false });
-      store.setSubChatLoading(activeSubId);
-      const sub = session?.subChats.find((s) => s.id === activeSubId);
-      const subContext = sub ? sub.parentContext + '\n\n' + sub.messages.slice(-4).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join('\n\n') : '';
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: question, context: subContext, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
-        });
-        const data = await res.json();
-        store.updateSubMessage(activeSubId, msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-      } catch { store.updateSubMessage(activeSubId, msgId, { answer: '⚠️ 네트워크 오류' }); }
-      finally { store.setSubChatLoading(null); }
-    } else {
-      store.addMessage({ id: msgId, question, answer: '', bookmarked: false });
-      store.updateMessage(msgId, { question });
-      store.setLoading(true);
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: question, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
-        });
-        const data = await res.json();
-        store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-      } catch { store.updateMessage(msgId, { answer: '⚠️ 네트워크 오류' }); }
-      finally { store.setLoading(false); }
-    }
-  };
-
 
   const sendImageFile = async (file: File) => {
     const reader = new FileReader();
@@ -227,19 +229,14 @@ const draw = (e: React.TouchEvent | React.MouseEvent) => {
       store.updateMessage(msgId, { question });
       store.setLoading(true);
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: question, language: settings.language, customPrompt: settings.customPrompt, image: imageData }),
-        });
-        const data = await res.json();
+        const data = await sendToApi(question, undefined, imageData);
         store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
       } catch { store.updateMessage(msgId, { answer: '⚠️ 네트워크 오류' }); }
       finally { store.setLoading(false); }
     };
     reader.readAsDataURL(file);
   };
-
-const sendDocFile = async (file: File) => {
+  const sendDocFile = async (file: File) => {
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
@@ -263,23 +260,28 @@ const sendDocFile = async (file: File) => {
     };
     reader.readAsDataURL(file);
   };
-  
-  
+
   const handleUnifiedSend = () => {
-    if (!input.trim()) return;
-    const question = input.trim();
+    const canvasImage = getCanvasImage();
+    const hasText = input.trim().length > 0;
+    if (!hasText && !canvasImage) return;
+    const question = input.trim() || '(필기 입력)';
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    if (canvasImage) {
+      clearCanvas();
+      setShowCanvas(false);
+    }
     if (popMode && activeSubId) {
-      handleSendSub(question, activeSubId);
+      handleSendSub(question, activeSubId, canvasImage);
     } else if (popMode && !activeSubId) {
       ensureSession();
       const context = buildContext();
       const subId = store.openSubChat(context, question);
       setActiveSubId(subId);
-      handleSendSub(question, subId);
+      handleSendSub(question, subId, canvasImage);
     } else {
-      handleSendMain(question);
+      handleSendMain(question, canvasImage);
     }
   };
 
@@ -297,20 +299,17 @@ const sendDocFile = async (file: File) => {
     }
     setPopMode(!popMode);
   };
-
   const closePopup = () => {
     setActiveSubId(null);
     setPopMode(false);
   };
-
   const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
     isDragging.current = true;
     dragStart.current = 'touches' in e ? e.touches[0].clientY : e.clientY;
     dragStartSize.current = subPanelSize;
     if (textareaRef.current) textareaRef.current.blur();
   };
-
-const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
+  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isDragging.current) return;
     if ('touches' in e) e.preventDefault();
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -319,20 +318,16 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
     const dvh = (dy / containerHeight) * 100;
     setSubPanelSize(Math.max(10, Math.min(60, dragStartSize.current + dvh)));
   };
-  
   const handleDragEnd = () => { isDragging.current = false; };
-
   const handleDelete = (id: string) => {
     if (confirmDelete === id) { store.deleteSession(id); setConfirmDelete(null); setActiveSubId(null); setPopMode(false); }
     else { setConfirmDelete(id); setTimeout(() => setConfirmDelete(null), 3000); }
   };
-
   const activeSub = session?.subChats.find((s) => s.id === activeSubId);
   const mainBMs = session?.messages.filter((m) => m.bookmarked) || [];
   const subBMs = session?.subChats.flatMap((sc) => sc.messages.filter((m) => m.bookmarked).map((m) => ({ ...m, subId: sc.id }))) || [];
   const filteredSessions = searchQuery ? store.sessions.filter((s) => s.title.toLowerCase().includes(searchQuery.toLowerCase()) || s.messages.some((m) => m.question.toLowerCase().includes(searchQuery.toLowerCase()))) : store.sessions;
   const showPopup = !!activeSub;
-
   const bg = dark ? 'bg-[#0a0a0a]' : 'bg-white';
   const bg2 = dark ? 'bg-[#111]' : 'bg-[#fafafa]';
   const bg3 = dark ? 'bg-[#1e1e1e]' : 'bg-[#f0f0f0]';
@@ -342,8 +337,6 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
   const text3 = dark ? 'text-[#666]' : 'text-[#999]';
   const text4 = dark ? 'text-[#444]' : 'text-[#ccc]';
   const inputBg = dark ? 'bg-[#1a1a1a]' : 'bg-[#f7f7f8]';
-
-  // 메시지 렌더링
   const renderMessages = (msgs: ChatMessage[], prefix: string, isSub: boolean) =>
     msgs.map((msg) => (
       <div key={msg.id} id={`${prefix}${msg.id}`} className="animate-fadeIn">
@@ -374,8 +367,6 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
         )}
       </div>
     ));
-
-  // 설정 화면
   if (showSettings) {
     return (
       <div className={`min-h-screen ${bg} ${text1} px-4 py-4`}>
@@ -450,16 +441,10 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
       </div>
     );
   }
-
-  // ========== 메인 레이아웃 ==========
   const popupPos = isMobile ? 'bottom' : settings.popupPosition;
-
   return (
     <div className={`flex h-[100dvh] overflow-hidden ${bg}`}>
-      {/* 사이드바 오버레이 */}
       {showSidebar && <div className="fixed inset-0 bg-black/20 z-40" onClick={() => { setShowSidebar(false); setConfirmDelete(null); setShowSearch(false); }} />}
-
-      {/* 사이드바 */}
       <div className={`fixed top-0 left-0 h-full w-72 ${bg2} border-r ${border} z-50 transition-transform duration-200 flex flex-col ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className={`p-3 border-b ${border} flex items-center justify-between`}>
           <span className={`text-sm font-medium ${text1}`}>채팅 목록</span>
@@ -497,8 +482,6 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
           <button onClick={() => { setShowSettings(true); setShowSidebar(false); }} className={`p-2 ${text3}`}><Settings size={15} /></button>
         </div>
       </div>
-
-      {/* PC 왼쪽 팝업 */}
       {showPopup && popupPos === 'left' && !isMobile && (
         <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-r border-[#f59e0b]`}>
           <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
@@ -511,10 +494,7 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
           </div>
         </div>
       )}
-
-      {/* 메인 컬럼: 헤더 → 채팅 → 팝업(모바일/아래) → 입력창 */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* 헤더 */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         <header className={`flex items-center justify-between px-3 py-2 border-b ${border} ${bg} z-10 flex-shrink-0`}>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowSidebar(true)} className={`${text3} p-1`}><Menu size={18} /></button>
@@ -528,8 +508,6 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
               className={`p-1.5 rounded-lg ${showSubBM ? 'bg-[#f59e0b]/10 text-[#f59e0b]' : text4}`}><PanelRightOpen size={15} /></button>
           </div>
         </header>
-
-        {/* 북마크 패널 */}
         {showMainBM && (
           <div className={`${dark ? 'bg-[#111]' : 'bg-[#f8faff]'} border-b ${border} px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0`}>
             <p className="text-[10px] text-[#4a9eff] mb-1">메인 북마크</p>
@@ -567,8 +545,6 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
             )}
           </div>
         )}
-
-        {/* 메인 채팅 영역 */}
         <main className={`flex-1 overflow-y-auto px-3 py-4 ${bg} min-h-0`}>
           <div className="max-w-2xl mx-auto space-y-5">
             {!session || session.messages.length === 0 ? (
@@ -581,31 +557,24 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
             <div ref={messagesEndRef} />
           </div>
         </main>
-
-        {/* 모바일/아래 팝업: flex 안에서 일반 div로 (fixed 아님!) */}
         {showPopup && (isMobile || popupPos === 'bottom') && (
           <div className={`${bg} flex-shrink-0 flex flex-col border-t border-[#f59e0b] border-b border-b-[#f59e0b]`}
             style={{ height: `${subPanelSize}vh` }}>
-            {/* 드래그 핸들 */}
             <div className="flex justify-center py-1.5 touch-none cursor-row-resize flex-shrink-0"
               onTouchStart={handleDragStart} onTouchMove={handleDragMove} onTouchEnd={handleDragEnd}
               onMouseDown={handleDragStart}>
               <div className={`w-10 h-1 ${dark ? 'bg-[#444]' : 'bg-[#ddd]'} rounded-full`} />
             </div>
-            {/* 팝업 헤더 */}
             <div className={`flex items-center justify-between px-3 py-1 flex-shrink-0`}>
               <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
               <button onClick={closePopup} className={`${text3} p-1`}><X size={13} /></button>
             </div>
-            {/* 팝업 메시지 */}
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
               {renderMessages(activeSub!.messages, 'sub-', true)}
               <div ref={subMessagesEndRef} />
             </div>
           </div>
         )}
-
-        {/* 입력창 (항상 맨 아래) */}
         <div className={`px-3 pb-1 pt-2 ${bg} flex-shrink-0`}>
           <div className={`flex flex-col px-3 py-2 max-w-2xl mx-auto border ${popMode ? 'border-[#f59e0b]' : `${border}`} rounded-2xl ${bg} transition-colors`}>
             {showCanvas && (
@@ -616,9 +585,9 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
               onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
               onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
             <div className="flex gap-2 mt-1">
+              <button onClick={undoStroke} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'} flex items-center gap-1`}><Undo2 size={12} />되돌리기</button>
               <button onClick={() => setEraserMode(!eraserMode)} className={`text-xs px-2 py-1 rounded ${eraserMode ? 'bg-[#ef4444] text-white' : `${text3} ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}`}>{eraserMode ? '지우개 ON' : '지우개'}</button>
               <button onClick={clearCanvas} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>전체삭제</button>
-              <button onClick={sendCanvasImage} className="text-xs text-white px-2 py-1 rounded bg-[#4a9eff]">전송</button>
               <button onClick={() => imageInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>📷</button>
               <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>🖼️</button>
               <button onClick={() => docInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? 'bg-[#2a2a2a]' : 'bg-[#f0f0f0]'}`}>📎</button>
@@ -632,7 +601,7 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
           </div>
         )}
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUnifiedSend(); } }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
               placeholder={popMode ? '팝업 질문...' : '메시지 입력...'} rows={2}
               className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30">
@@ -647,7 +616,7 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
             </button>
               </div>
               <button onClick={handleUnifiedSend}
-                disabled={!input.trim() || store.isLoading || !!store.subChatLoading}
+                disabled={((!input.trim() && !showCanvas) || store.isLoading || !!store.subChatLoading)}
                 className={`p-2.5 ${popMode ? 'bg-[#f59e0b]' : 'bg-[#4a9eff]'} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
                 <Send size={15} className="text-white" />
               </button>
@@ -658,8 +627,6 @@ const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
           </p>
         </div>
       </div>
-
-      {/* PC 오른쪽 팝업 */}
       {showPopup && popupPos === 'right' && !isMobile && (
         <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
           <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
