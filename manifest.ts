@@ -12,14 +12,14 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       {
         src: '/pop-icon.png',
-        sizes: '192x192', // ⭐️ 크롬이 필수로 요구하는 사이즈 추가!
+        sizes: '192x192',
         type: 'image/png',
       },
       {
         src: '/pop-icon.png',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'any maskable', // ⭐️ 안드로이드 아이콘 최적화 옵션
+        purpose: 'maskable',
       },
     ],
   }
