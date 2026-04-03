@@ -7,11 +7,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description: '팝업으로 즐기는 스마트한 AI 채팅',
     start_url: '/',
     display: 'standalone', // ⭐️ 주소창을 날려버리는 핵심 옵션
-    background_color: '#ffffff', // 흰색 배경 아이콘이므로 배경색도 흰색으로
+    background_color: '#ffffff', // 하얀 배경 아이콘이므로 흰색으로
     theme_color: '#ffffff',
     icons: [
       {
-        // ⭐️ 우리가 방금 public 폴더에 올린 이미지 이름
+        // ⭐️ 우리가 public 폴더에 올린 pop-icon.png
         src: '/pop-icon.png',
         sizes: '512x512',
         type: 'image/png',
