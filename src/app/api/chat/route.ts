@@ -22,10 +22,10 @@ export async function POST(req: NextRequest) {
 
     // aiMode 값에 따라 진짜 모델 이름 매핑하기
     // (참고: 만약 구글 API에서 3.0 버전을 찾을 수 없다는 에러가 나면 2.5로 숫자를 낮춰주세요!)
-    let modelName = 'gemini-3-flash-preview'; 
+    let modelName = 'gemini-2.5-flash' ; 
     
     if (aiMode === 'thinking') {
-      modelName = 'gemini-2.0-flash-thinking-exp-01-21'; 
+      modelName = 'gemini-3-flash-preview'; 
     } else if (aiMode === 'pro') {
       modelName = 'gemini-3.1-pro-preview' ; 
     }
