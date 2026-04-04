@@ -179,12 +179,13 @@ export default function Home() {
     return session.messages.slice(-6).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join("\n\n");
   }, [session]);
 
-  // [수정] 통신 취소를 위한 signal 파라미터 추가
+
   const sendToApi = async (message: string, context?: string, image?: string, signal?: AbortSignal) => {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image }),
-      signal, // <-- 여기 추가됨
+      // 👇 body 안에 aiMode를 추가로 보냅니다!
+      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image, aiMode }), 
+      signal,
     });
     return res.json();
   };
@@ -823,79 +824,62 @@ export default function Home() {
             </div>
           )}
 
-          <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
- 
-
-              
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
-              placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
-              className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30">
-              <div className="flex items-center gap-3">
-                <button onClick={togglePopMode}
-                  className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}>
-                  <Zap size={15} />
-                </button>
-                <button onClick={() => setShowCanvas(!showCanvas)}
-              className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}>
-              <Plus size={15} />
-            </button>
-              </div>
-                            {store.isLoading || !!store.subChatLoading ? (
-                <button onClick={handleStop}
-                  className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`}
-                  title="응답 정지">
-                  <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
-                </button>
-              ) : (
-                <button onClick={handleUnifiedSend}
-                  // 맨 밑 전송 버튼 (약 664번째 줄 부근)
-                  disabled={!input.trim() && !showCanvas && attachedFiles.length === 0}
-                  className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
-                  <Send size={15} className="text-white" />
-                </button>
-              )}
-
+                    <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
+            placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
+            className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
+          
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30">
+            <div className="flex items-center gap-3">
+              <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
+              <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
             </div>
+            {store.isLoading || !!store.subChatLoading ? (
+              <button onClick={handleStop} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`} title="응답 정지">
+                <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
+              </button>
+            ) : (
+              <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
+                <Send size={15} className="text-white" />
+              </button>
+            )}
           </div>
-          <p className={`text-center text-[9px] mt-0.5 ${popMode ? "text-[#f59e0b]" : text4}`}>
-            {popMode ? "⚡ 팝업 모드" : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}
-          </p>
+        </div>
+        <p className={`text-center text-[9px] mt-0.5 ${popMode ? "text-[#f59e0b]" : text4}`}>{popMode ? "⚡ 팝업 모드" : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}</p>
+      </div>
+    </div>
+
+    {showPopup && popupPos === "right" && !isMobile && (
+      <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
+        <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
+          <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
+          <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+          {renderMessages(activeSub!.messages, "sub-", true)}
+          <div ref={subMessagesEndRef} />
         </div>
       </div>
+    )}
 
-            {showPopup && popupPos === "right" && !isMobile && (
-        <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
-          <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
-            <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
-            <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
+    {/* 로그인 모달 */}
+    {showAuth && (
+      <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+        <div className={`${bg} border ${border} rounded-2xl p-5 w-full max-w-sm flex flex-col gap-4 animate-fadeIn`}>
+          <div className="flex justify-between items-center mb-2">
+            <h3 className={`font-medium ${text1}`}>로그인 / 회원가입</h3>
+            <button onClick={() => setShowAuth(false)} className={text3}><X size={16} /></button>
           </div>
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-            {renderMessages(activeSub!.messages, "sub-", true)}
-            <div ref={subMessagesEndRef} />
-          </div>
-        </div>
-      )}
-
-      {/* 로그인 모달 */}
-      {showAuth && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className={`${bg} border ${border} rounded-2xl p-5 w-full max-w-sm flex flex-col gap-4 animate-fadeIn`}>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className={`font-medium ${text1}`}>로그인 / 회원가입</h3>
-              <button onClick={() => setShowAuth(false)} className={text3}><X size={16} /></button>
-            </div>
-            <input type="email" placeholder="이메일" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
-            <input type="password" placeholder="비밀번호" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
-            <div className="flex gap-2 mt-2">
-              <button onClick={handleLogin} className="flex-1 bg-[#4a9eff] text-white py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform">로그인</button>
-              <button onClick={handleSignUp} className={`flex-1 border ${border} ${text1} py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform`}>회원가입</button>
-            </div>
+          <input type="email" placeholder="이메일" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
+          <input type="password" placeholder="비밀번호" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
+          <div className="flex gap-2 mt-2">
+            <button onClick={handleLogin} className="flex-1 bg-[#4a9eff] text-white py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform">로그인</button>
+            <button onClick={handleSignUp} className={`flex-1 border ${border} ${text1} py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform`}>회원가입</button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
-    </div>
+  </div>
   );
 }
-
