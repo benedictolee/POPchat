@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { supabase } from "@/utils/supabase"; // 🚨 1. Supabase 불러오기 추가!
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -12,28 +13,25 @@ const langMap: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. 프론트에서 보낸 aiMode 받아오기
-    const { message, context, language, customPrompt, image, aiMode } = await req.json();
+    // 🚨 2. 프론트에서 보낸 userId와 isPremium도 같이 받아오기!
+    const { message, context, language, customPrompt, image, aiMode, userId, isPremium } = await req.json();
     
     if (!message && !image) {
       return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
     }
 
-    // 2. aiMode 값에 따라 진짜 모델 이름 매핑하기
-    let modelName = 'gemini-3.0-flash'; // 기본값 (빠른 모드)
+    // aiMode 값에 따라 진짜 모델 이름 매핑하기
+    // (참고: 만약 구글 API에서 3.0 버전을 찾을 수 없다는 에러가 나면 2.5로 숫자를 낮춰주세요!)
+    let modelName = 'gemini-3.0-flash'; 
     
     if (aiMode === 'thinking') {
-      // 사고 모드 (Thinking 모델)
       modelName = 'gemini-3.0-flash-thinking-exp-01-21'; 
     } else if (aiMode === 'pro') {
-      // 연산 모드 (Pro 모델)
       modelName = 'gemini-3.0-pro'; 
     }
 
-    // 3. 선택된 모델로 AI 호출 준비!
     const model = genAI.getGenerativeModel({ model: modelName });
  
-
     let systemParts = '';
     if (customPrompt) systemParts += customPrompt + '\n';
     if (language && langMap[language]) systemParts += langMap[language] + '\n';
@@ -60,9 +58,38 @@ export async function POST(req: NextRequest) {
       generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
     });
 
-    return NextResponse.json({ answer: result.response.text() });
+    const text = result.response.text();
+
+    // 🚨 3. AI 답변이 무사히 생성되었으므로, DB 사용량 숫자를 올립니다! 🚨
+    if (userId) {
+      const today = new Date().toLocaleDateString('en-CA');
+      const { data: usageData } = await supabase.from('daily_usage').select('*').eq('user_id', userId).eq('date', today).single();
+
+      if (usageData) {
+        let updateData: any = {};
+        
+        if (!isPremium) {
+          // 무료 유저: 사용 횟수 1씩 증가
+          if (aiMode === 'flash') updateData.flash_count = usageData.flash_count + 1;
+          if (aiMode === 'thinking') updateData.thinking_count = usageData.thinking_count + 1;
+          if (aiMode === 'pro') updateData.pro_count = usageData.pro_count + 1;
+        } else {
+          // 유료 유저: 모델에 따라 토큰 차감
+          if (aiMode === 'thinking') updateData.used_tokens = usageData.used_tokens + 50;
+          if (aiMode === 'pro') updateData.used_tokens = usageData.used_tokens + 25;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await supabase.from('daily_usage').update(updateData).eq('id', usageData.id);
+        }
+      }
+    }
+
+    // 프론트엔드로 최종 답변 보내기
+    return NextResponse.json({ answer: text });
+    
   } catch (error) {
     console.error('Chat API Error:', error);
     return NextResponse.json({ error: 'AI 응답 생성 중 오류가 발생했습니다.' }, { status: 500 });
   }
-} 
+}
