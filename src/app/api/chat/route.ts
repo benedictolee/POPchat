@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     let modelName = 'gemini-2.5-flash'; 
     
     if (aiMode === 'thinking') {
-      modelName = 'gemini-2.0-flash-thinking-exp-01-21'; 
+      modelName = 'gemini-2.0-flash-thinking'; 
     } else if (aiMode === 'pro') {
       modelName = 'gemini-2.5-pro'; 
     }
