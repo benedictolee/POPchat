@@ -827,9 +827,16 @@ export default function Home() {
             </div>
           )}
 
-                                <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
-              placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
+              <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
+  onKeyDown={(e) => { 
+    // 🚨 !isMobile 조건을 추가해서 모바일이면 엔터가 전송이 아닌 줄바꿈으로 작동하게 합니다.
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !isMobile) { 
+      e.preventDefault(); 
+      handleUnifiedSend(); 
+    } 
+  }}
+ 
+          placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
               className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
             
             {/* 전송 및 기능 버튼 영역 */}
@@ -866,7 +873,7 @@ export default function Home() {
                       {isPremium ? (
                         <div className="w-full">
                           <div className="flex justify-between text-[11px] mb-1.5 font-medium">
-                            <span className={text1}>총 토큰 사용량: {(usage.usedTokens / usage.maxTokens) * 100}%</span>
+                            <span className={text1}>총 토큰 사용량: {((usage.usedTokens / usage.maxTokens) * 100).toFixed(1)}%</span>
                             <span className={text3}>{usage.usedTokens} / {usage.maxTokens}</span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
