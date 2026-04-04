@@ -230,12 +230,13 @@ export default function Home() {
   const sendToApi = async (message: string, context?: string, image?: string, signal?: AbortSignal) => {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      // 👇 body 안에 aiMode를 추가로 보냅니다!
-      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image, aiMode }), 
+      // 👇 body 맨 끝에 userId와 isPremium을 추가해서 보냅니다!
+      body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image, aiMode, userId: currentUser?.id, isPremium }), 
       signal,
     });
     return res.json();
   };
+
 
 
   // [수정] Main 채팅 전송 (정지 기능 포함)
@@ -250,6 +251,7 @@ export default function Home() {
     try {
       const data = await sendToApi(question, undefined, image, abortControllerRef.current.signal);
       store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
+      if (currentUser && !data.error) fetchUserData(currentUser.id); 
     } catch (err: any) {
       if (err.name === "AbortError") {
         store.updateMessage(msgId, { answer: "⚠️ 생성이 취소되었습니다." });
@@ -274,6 +276,7 @@ export default function Home() {
     try {
       const data = await sendToApi(question, subContext, image, abortControllerRef.current.signal);
       store.updateSubMessage(subId, msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
+      if (currentUser && !data.error) fetchUserData(currentUser.id); 
     } catch (err: any) {
       if (err.name === "AbortError") {
         store.updateSubMessage(subId, msgId, { answer: "⚠️ 생성이 취소되었습니다." });
