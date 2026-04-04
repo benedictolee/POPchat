@@ -38,6 +38,7 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [shortcutInput, setShortcutInput] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<{ name: string, base64: string, isImage: boolean } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -277,76 +278,69 @@ export default function Home() {
     return canvasRef.current.toDataURL("image/png");
   };
 
-  const sendImageFile = async (file: File) => {
+  
+
+    // 👇 기존 sendImageFile, sendDocFile 대신 이 함수를 사용합니다.
+  const handleFileAttach = (file: File) => {
     const reader = new FileReader();
-    reader.onload = async () => {
-      const imageData = reader.result as string;
-      setShowCanvas(false);
-      ensureSession();
-      const msgId = genId();
-      const question = input.trim() || "(이미지 첨부)";
-      setInput("");
-      store.addMessage({ id: msgId, question, answer: "", bookmarked: false });
-      store.updateMessage(msgId, { question });
-      store.setLoading(true);
-      try {
-        const data = await sendToApi(question, undefined, imageData);
-        store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-      } catch { store.updateMessage(msgId, { answer: "⚠️ 네트워크 오류" }); }
-      finally { store.setLoading(false); }
+    reader.onload = () => {
+      setAttachedFile({
+        name: file.name,
+        base64: reader.result as string,
+        isImage: file.type.startsWith("image/")
+      });
+      setShowCanvas(false); // 파일 선택 후 툴바 닫기
     };
     reader.readAsDataURL(file);
   };
 
-  const sendDocFile = async (file: File) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      setShowCanvas(false);
-      ensureSession();
-      const msgId = genId();
-      const question = input.trim() || `(파일 첨부: ${file.name})`;
-      setInput("");
-      store.addMessage({ id: msgId, question, answer: "", bookmarked: false });
-      store.updateMessage(msgId, { question });
-      store.setLoading(true);
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: question + `\n\n[첨부 파일: ${file.name}]`, language: settings.language, customPrompt: settings.customPrompt, image: file.type.startsWith("image/") ? base64 : undefined }),
-        });
-        const data = await res.json();
-        store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-      } catch { store.updateMessage(msgId, { answer: "⚠️ 네트워크 오류" }); }
-      finally { store.setLoading(false); }
-    };
-    reader.readAsDataURL(file);
-  };
 
   // [FIX#3,5] 캔버스+텍스트 통합 전송
   const handleUnifiedSend = () => {
     const canvasImage = getCanvasImage();
-    const hasText = input.trim().length > 0;
-    if (!hasText && !canvasImage) return;
-    const question = input.trim() || "(필기 입력)";
+    let finalImage = canvasImage;
+    let question = input.trim();
+
+    // 1. 첨부파일이 있는 경우 합치기
+    if (attachedFile) {
+      if (attachedFile.isImage) {
+        finalImage = attachedFile.base64;
+        question = question || `(이미지 첨부: ${attachedFile.name})`;
+      } else {
+        question = question || `(파일 첨부: ${attachedFile.name})`;
+        question += `\n\n[첨부 파일: ${attachedFile.name}]`;
+      }
+    } else if (canvasImage) {
+      // 첨부파일 없이 캔버스 필기만 있는 경우
+      question = question || "(필기 입력)";
+    }
+
+    // 2. 아무것도 없으면 전송 막기
+    if (!question && !finalImage) return;
+
+    // 3. UI 및 상태 초기화
     setInput("");
+    setAttachedFile(null); // 전송 후 첨부파일 비우기
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     if (canvasImage) {
       clearCanvas();
       setShowCanvas(false);
     }
+
+    // 4. 기존 라우팅 전송 로직 (수정할 필요 없음)
     if (popMode && activeSubId) {
-      handleSendSub(question, activeSubId, canvasImage);
+      handleSendSub(question, activeSubId, finalImage);
     } else if (popMode && !activeSubId) {
       ensureSession();
       const context = buildContext();
       const subId = store.openSubChat(context, question);
       setActiveSubId(subId);
-      handleSendSub(question, subId, canvasImage);
+      handleSendSub(question, subId, finalImage);
     } else {
-      handleSendMain(question, canvasImage);
+      handleSendMain(question, finalImage);
     }
   };
+
 
   const togglePopMode = () => {
     if (!popMode) {
@@ -687,14 +681,29 @@ export default function Home() {
               <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>🖼️</button>
               <button onClick={() => docInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📎</button>
             </div>
-            <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) sendImageFile(e.target.files[0]); e.target.value = ""; }} />
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) sendImageFile(e.target.files[0]); e.target.value = ""; }} />
-            <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.csv" className="hidden"
-              onChange={(e) => { if (e.target.files?.[0]) sendDocFile(e.target.files[0]); e.target.value = ""; }} />
+              {/* 👇 기존 input 3개를 이렇게 수정 */}
+  <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+    onChange={(e) => { if (e.target.files?.[0]) handleFileAttach(e.target.files[0]); e.target.value = ""; }} />
+  <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+    onChange={(e) => { if (e.target.files?.[0]) handleFileAttach(e.target.files[0]); e.target.value = ""; }} />
+  <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.csv" className="hidden"
+    onChange={(e) => { if (e.target.files?.[0]) handleFileAttach(e.target.files[0]); e.target.value = ""; }} />
+
           </div>
         )}
+              {/* 👇 textarea 태그 바로 위에 이 블록을 추가하세요 */}
+  {attachedFile && (
+    <div className="flex items-center justify-between bg-[#4a9eff]/10 px-3 py-1.5 rounded-lg mb-2">
+      <span className="text-[11px] text-[#4a9eff] truncate flex-1">
+        {attachedFile.isImage ? "🖼️ " : "📎 "}{attachedFile.name}
+      </span>
+      <button onClick={() => setAttachedFile(null)} className="text-[#4a9eff] p-1 ml-2">
+        <X size={14} />
+      </button>
+    </div>
+  )}
+  <textarea ref={textareaRef} value={input} ... />
+
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
               placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
