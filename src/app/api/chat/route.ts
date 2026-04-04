@@ -12,12 +12,27 @@ const langMap: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, context, language, customPrompt, image } = await req.json();
+    // 1. 프론트에서 보낸 aiMode 받아오기
+    const { message, context, language, customPrompt, image, aiMode } = await req.json();
+    
     if (!message && !image) {
       return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // 2. aiMode 값에 따라 진짜 모델 이름 매핑하기
+    let modelName = 'gemini-3.0-flash'; // 기본값 (빠른 모드)
+    
+    if (aiMode === 'thinking') {
+      // 사고 모드 (Thinking 모델)
+      modelName = 'gemini-3.0-flash-thinking-exp-01-21'; 
+    } else if (aiMode === 'pro') {
+      // 연산 모드 (Pro 모델)
+      modelName = 'gemini-3.0-pro'; 
+    }
+
+    // 3. 선택된 모델로 AI 호출 준비!
+    const model = genAI.getGenerativeModel({ model: modelName });
+ 
 
     let systemParts = '';
     if (customPrompt) systemParts += customPrompt + '\n';
