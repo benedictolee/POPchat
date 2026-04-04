@@ -8,9 +8,10 @@ import rehypeKatex from "rehype-katex";
 import {
   Send, Sparkles, Bookmark, BookmarkCheck, Plus, MessageSquare,
   X, Menu, PanelLeftOpen, PanelRightOpen, Trash2,
-  Settings, Search, User, ChevronLeft, Moon, Sun, Globe, MessageCircle, Zap, Undo2
+  Settings, Search, User, ChevronLeft, Moon, Sun, Globe, MessageCircle, Zap, Undo2, ChevronDown, Check
 } from "lucide-react";
-
+ 
+  
 const genId = () => Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
 const langNames: Record<string, string> = { ko: "한국어", en: "English", zh: "中文", ja: "日本語" };
 const posNames: Record<string, string> = { bottom: "아래", left: "왼쪽", right: "오른쪽" };
@@ -38,7 +39,14 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [shortcutInput, setShortcutInput] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
-  const [attachedFile, setAttachedFile] = useState<{ name: string, base64: string, isImage: boolean } | null>(null);
+  // [수정/추가] 파일 여러 개 첨부 배열 및 요금제/모드 관련 상태
+  const [attachedFiles, setAttachedFiles] = useState<{ name: string, base64: string, isImage: boolean }[]>([]);
+  const [aiMode, setAiMode] = useState<'flash' | 'thinking' | 'pro'>('flash');
+  const [showModeModal, setShowModeModal] = useState(false);
+  const [isPremium, setIsPremium] = useState(false); // true로 바꾸면 테스트 시 프리미엄 모드로 작동
+  const [usage, setUsage] = useState({
+    flash: 0, pro: 0, thinking: 0, usedTokens: 600, maxTokens: 1000
+  });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -316,66 +324,96 @@ export default function Home() {
 
   
 
-    // 👇 기존 sendImageFile, sendDocFile 대신 이 함수를 사용합니다.
-  const handleFileAttach = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAttachedFile({
-        name: file.name,
-        base64: reader.result as string,
-        isImage: file.type.startsWith("image/")
-      });
-      setShowCanvas(false); // 파일 선택 후 툴바 닫기
-    };
-    reader.readAsDataURL(file);
+  // 👇 다중 파일 및 용량/요금제 제한을 포함한 파일 첨부 핸들러
+  const handleFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    let tempFiles = [...attachedFiles];
+    let currentImagesCount = tempFiles.filter(f => f.isImage).length;
+
+    for (const file of files) {
+      const isImage = file.type.startsWith("image/");
+      const fileSizeMB = file.size / (1024 * 1024);
+
+      if (!isImage) {
+        if (!isPremium) { alert("무료 요금제는 문서 첨부를 지원하지 않습니다. 업그레이드 해주세요!"); break; }
+        if (fileSizeMB > 15) { alert(`문서 용량은 15MB를 초과할 수 없습니다. (${file.name})`); continue; }
+      }
+
+      if (isImage) {
+        if (!isPremium) {
+          if (currentImagesCount >= 1) { alert("무료 요금제는 이미지를 1장만 첨부할 수 있습니다."); break; }
+          if (fileSizeMB > 2) { alert(`2MB 이하의 이미지만 첨부 가능합니다. (${file.name})`); continue; }
+        } else {
+          if (currentImagesCount >= 3) { alert("유료 요금제는 이미지를 최대 3장까지 첨부할 수 있습니다."); break; }
+        }
+        currentImagesCount++;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachedFiles(prev => [...prev, { name: file.name, base64: reader.result as string, isImage }]);
+      };
+      reader.readAsDataURL(file);
+    }
+    setShowCanvas(false);
+    e.target.value = ""; 
   };
+ 
 
-
-  // [FIX#3,5] 캔버스+텍스트 통합 전송
+  // [FIX#3,5] 요금제 검증 + 캔버스/다중파일 통합 전송
   const handleUnifiedSend = () => {
+    // 1. 요금제 및 토큰 횟수 검증
+    if (!isPremium) {
+      if (aiMode === 'flash' && usage.flash >= 30) return alert("오늘의 빠른 모드 무료 횟수(30회)를 소진했습니다.");
+      if (aiMode === 'thinking' && usage.thinking >= 1) return alert("오늘의 사고 모드 무료 횟수(1회)를 소진했습니다. 업그레이드 하세요!");
+      if (aiMode === 'pro' && usage.pro >= 1) return alert("오늘의 연산 모드 무료 횟수(1회)를 소진했습니다. 업그레이드 하세요!");
+    } else {
+      const requiredTokens = aiMode === 'thinking' ? 50 : aiMode === 'pro' ? 25 : 0;
+      if (usage.usedTokens + requiredTokens > usage.maxTokens) return alert("토큰이 부족합니다.");
+    }
+
+    // 2. 파일 및 질문 통합
     const canvasImage = getCanvasImage();
-    let finalImage = canvasImage;
+    let finalImages: string[] = [];
     let question = input.trim();
 
-    // 1. 첨부파일이 있는 경우 합치기
-    if (attachedFile) {
-      if (attachedFile.isImage) {
-        finalImage = attachedFile.base64;
-        question = question || `(이미지 첨부: ${attachedFile.name})`;
-      } else {
-        question = question || `(파일 첨부: ${attachedFile.name})`;
-        question += `\n\n[첨부 파일: ${attachedFile.name}]`;
-      }
+    if (canvasImage) finalImages.push(canvasImage);
+
+    if (attachedFiles.length > 0) {
+      attachedFiles.forEach(file => {
+        if (file.isImage) finalImages.push(file.base64);
+        else question += `\n\n[첨부 문서: ${file.name} 확인 요망]`;
+      });
+      if (!question) question = "(파일 첨부)";
     } else if (canvasImage) {
-      // 첨부파일 없이 캔버스 필기만 있는 경우
       question = question || "(필기 입력)";
     }
 
-    // 2. 아무것도 없으면 전송 막기
-    if (!question && !finalImage) return;
+    if (!question && finalImages.length === 0) return;
 
-    // 3. UI 및 상태 초기화
     setInput("");
-    setAttachedFile(null); // 전송 후 첨부파일 비우기
+    setAttachedFiles([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-    if (canvasImage) {
-      clearCanvas();
-      setShowCanvas(false);
-    }
+    if (canvasImage) { clearCanvas(); setShowCanvas(false); }
 
-    // 4. 기존 라우팅 전송 로직 (수정할 필요 없음)
+    const imageToSend = finalImages.length > 0 ? finalImages[0] : undefined;
+
     if (popMode && activeSubId) {
-      handleSendSub(question, activeSubId, finalImage);
+      handleSendSub(question, activeSubId, imageToSend);
     } else if (popMode && !activeSubId) {
       ensureSession();
       const context = buildContext();
       const subId = store.openSubChat(context, question);
       setActiveSubId(subId);
-      handleSendSub(question, subId, finalImage);
+      handleSendSub(question, subId, imageToSend);
     } else {
-      handleSendMain(question, finalImage);
+      handleSendMain(question, imageToSend);
     }
   };
+ 
+
 
 
   const togglePopMode = () => {
@@ -717,30 +755,78 @@ export default function Home() {
               <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>🖼️</button>
               <button onClick={() => docInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📎</button>
             </div>
-              {/* 👇 기존 input 3개를 이렇게 수정 */}
-  <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-    onChange={(e) => { if (e.target.files?.[0]) handleFileAttach(e.target.files[0]); e.target.value = ""; }} />
-  <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-    onChange={(e) => { if (e.target.files?.[0]) handleFileAttach(e.target.files[0]); e.target.value = ""; }} />
-  <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.csv" className="hidden"
-    onChange={(e) => { if (e.target.files?.[0]) handleFileAttach(e.target.files[0]); e.target.value = ""; }} />
-
+                          {/* 👇 다중 파일 입력을 위한 input 태그 수정 */}
+            <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileAttach} />
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileAttach} />
+            <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.csv" className="hidden" onChange={handleFileAttach} />
           </div>
         )}
-              {/* 👇 textarea 태그 바로 위에 이 블록을 추가하세요 */}
-  {attachedFile && (
-    <div className="flex items-center justify-between bg-[#4a9eff]/10 px-3 py-1.5 rounded-lg mb-2">
-      <span className="text-[11px] text-[#4a9eff] truncate flex-1">
-        {attachedFile.isImage ? "🖼️ " : "📎 "}{attachedFile.name}
-      </span>
-      <button onClick={() => setAttachedFile(null)} className="text-[#4a9eff] p-1 ml-2">
-        <X size={14} />
-      </button>
-    </div>
-  )}
 
+        <div className="relative">
+          {/* 모델 선택 버튼 */}
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <button onClick={() => setShowModeModal(!showModeModal)} 
+              className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-1 border ${dark ? "bg-[#1a1a1a] border-[#333]" : "bg-white border-[#e5e5e5] shadow-sm"}`}>
+              {aiMode === 'flash' ? '⚡ 빠른 모드' : aiMode === 'thinking' ? '🧠 사고 모드' : '⚙️ 연산 모드'}
+              <ChevronDown size={14} />
+            </button>
+          </div>
 
-            <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
+          {/* 모드 선택 바텀시트/팝업 */}
+          {showModeModal && (
+            <div className={`absolute bottom-full left-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 mb-2 animate-fadeIn`}>
+              <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                <div><span className={`text-sm font-medium ${text1}`}>⚡ 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
+                {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
+              </button>
+              <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                <div><span className={`text-sm font-medium ${text1}`}>🧠 사고 모드</span>
+                {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 50 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
+              </button>
+              <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                <div><span className={`text-sm font-medium ${text1}`}>⚙️ 연산 모드</span>
+                {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 25 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
+              </button>
+
+              <div className={`mt-3 pt-3 border-t ${border}`}>
+                {isPremium ? (
+                  <div className="w-full">
+                    <div className="flex justify-between text-[11px] mb-1.5 font-medium">
+                      <span className={text1}>총 토큰 사용량: {(usage.usedTokens / usage.maxTokens) * 100}%</span>
+                      <span className={text3}>{usage.usedTokens} / {usage.maxTokens}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                      <div className="bg-[#4a9eff] h-1.5 rounded-full" style={{ width: `${(usage.usedTokens / usage.maxTokens) * 100}%` }}></div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <span className={`text-[11px] ${text3}`}>무료 요금제 사용 중</span>
+                    <button onClick={() => setIsPremium(true)} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 다중 첨부파일 렌더링 영역 */}
+          {attachedFiles.length > 0 && (
+            <div className="flex flex-col gap-1 mb-2">
+              {attachedFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center justify-between bg-[#4a9eff]/10 px-3 py-1.5 rounded-lg">
+                  <span className="text-[11px] text-[#4a9eff] truncate flex-1">{file.isImage ? "🖼️ " : "📎 "}{file.name}</span>
+                  <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))} className="text-[#4a9eff] p-1 ml-2"><X size={14} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
+ 
+
+              
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
               placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
               className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
@@ -763,7 +849,8 @@ export default function Home() {
                 </button>
               ) : (
                 <button onClick={handleUnifiedSend}
-                  disabled={!input.trim() && !showCanvas && !attachedFile}
+                  // 맨 밑 전송 버튼 (약 664번째 줄 부근)
+                  disabled={!input.trim() && !showCanvas && attachedFiles.length === 0}
                   className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
                   <Send size={15} className="text-white" />
                 </button>
