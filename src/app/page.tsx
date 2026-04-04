@@ -702,7 +702,7 @@ export default function Home() {
       </button>
     </div>
   )}
-  <textarea ref={textareaRef} value={input} ... />
+
 
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
