@@ -764,54 +764,7 @@ export default function Home() {
         )}
 
         <div className="relative">
-          {/* 모델 선택 버튼 */}
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <button onClick={() => setShowModeModal(!showModeModal)} 
-              className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-1 border ${dark ? "bg-[#1a1a1a] border-[#333]" : "bg-white border-[#e5e5e5] shadow-sm"}`}>
-              {aiMode === 'flash' ? ' 빠른 모드' : aiMode === 'thinking' ? ' 사고 모드' : ' 연산 모드'}
-              <ChevronDown size={14} />
-            </button>
-          </div>
-
-          {/* 모드 선택 바텀시트/팝업 */}
-          {showModeModal && (
-            <div className={`absolute bottom-full left-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 mb-2 animate-fadeIn`}>
-              <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                <div><span className={`text-sm font-medium ${text1}`}> 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
-                {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
-              </button>
-              <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                <div><span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
-                {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 50 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
-                {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
-              </button>
-              <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                <div><span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
-                {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 25 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
-                {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
-              </button>
-
-              <div className={`mt-3 pt-3 border-t ${border}`}>
-                {isPremium ? (
-                  <div className="w-full">
-                    <div className="flex justify-between text-[11px] mb-1.5 font-medium">
-                      <span className={text1}>총 토큰 사용량: {(usage.usedTokens / usage.maxTokens) * 100}%</span>
-                      <span className={text3}>{usage.usedTokens} / {usage.maxTokens}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                      <div className="bg-[#4a9eff] h-1.5 rounded-full" style={{ width: `${(usage.usedTokens / usage.maxTokens) * 100}%` }}></div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-between items-center">
-                    <span className={`text-[11px] ${text3}`}>무료 요금제 사용 중</span>
-                    <button onClick={() => setIsPremium(true)} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
+        
           {/* 다중 첨부파일 렌더링 영역 */}
           {attachedFiles.length > 0 && (
             <div className="flex flex-col gap-1 mb-2">
@@ -835,6 +788,66 @@ export default function Home() {
               <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
               <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
             </div>
+            
+            
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30 relative">
+            
+            {/* 좌측 버튼들 (팝업, 캔버스) */}
+            <div className="flex items-center gap-3">
+              <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
+              <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
+            </div>
+
+            {/* 우측 버튼들 (모드 선택 + 전송) */}
+            <div className="flex items-center gap-2">
+              
+              {/* 모드 선택 바텀시트/팝업 (위로 열림) */}
+              {showModeModal && (
+                <div className={`absolute bottom-[110%] right-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 animate-fadeIn`}>
+                  <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                    <div><span className={`text-sm font-medium ${text1}`}> 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
+                    {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
+                  </button>
+                  <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                    <div><span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
+                    {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 50 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                    {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
+                  </button>
+                  <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                    <div><span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
+                    {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 25 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                    {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
+                  </button>
+
+                  <div className={`mt-3 pt-3 border-t ${border}`}>
+                    {isPremium ? (
+                      <div className="w-full">
+                        <div className="flex justify-between text-[11px] mb-1.5 font-medium">
+                          <span className={text1}>총 토큰 사용량: {(usage.usedTokens / usage.maxTokens) * 100}%</span>
+                          <span className={text3}>{usage.usedTokens} / {usage.maxTokens}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                          <div className="bg-[#4a9eff] h-1.5 rounded-full" style={{ width: `${(usage.usedTokens / usage.maxTokens) * 100}%` }}></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <span className={`text-[11px] ${text3}`}>무료 요금제 사용 중</span>
+                        <button onClick={() => setIsPremium(true)} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 모드 선택 버튼 (전송 버튼 바로 옆) */}
+              <button onClick={() => setShowModeModal(!showModeModal)} 
+                className={`text-[11px] font-medium px-3 py-2 rounded-xl flex items-center gap-1 transition-colors ${dark ? "bg-[#2a2a2a] text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#333] hover:bg-[#e5e5e5]"}`}>
+                {aiMode === 'flash' ? ' 빠른 모드' : aiMode === 'thinking' ? ' 사고 모드' : ' 연산 모드'}
+                <ChevronDown size={14} className="ml-0.5" />
+              </button>
+
+              
             {store.isLoading || !!store.subChatLoading ? (
               <button onClick={handleStop} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`} title="응답 정지">
                 <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
