@@ -777,123 +777,120 @@ export default function Home() {
             </div>
           )}
 
-                    <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
-            placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
-            className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
-          </div>
-          
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30">
-            <div className="flex items-center gap-3">
-              <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
-              <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
-            </div>
+                                <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleUnifiedSend(); } }}
+              placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
+              className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
             
-            
+            {/* 전송 및 기능 버튼 영역 */}
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30 relative">
-            
-            {/* 좌측 버튼들 (팝업, 캔버스) */}
-            <div className="flex items-center gap-3">
-              <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
-              <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
-            </div>
-
-            {/* 우측 버튼들 (모드 선택 + 전송) */}
-            <div className="flex items-center gap-2">
               
-              {/* 모드 선택 바텀시트/팝업 (위로 열림) */}
-              {showModeModal && (
-                <div className={`absolute bottom-[110%] right-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 animate-fadeIn`}>
-                  <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                    <div><span className={`text-sm font-medium ${text1}`}> 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
-                    {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
-                  </button>
-                  <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                    <div><span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
-                    {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 50 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
-                    {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
-                  </button>
-                  <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                    <div><span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
-                    {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 25 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
-                    {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
-                  </button>
+              {/* 좌측 버튼들 (팝업, 캔버스) */}
+              <div className="flex items-center gap-3">
+                <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
+                <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
+              </div>
 
-                  <div className={`mt-3 pt-3 border-t ${border}`}>
-                    {isPremium ? (
-                      <div className="w-full">
-                        <div className="flex justify-between text-[11px] mb-1.5 font-medium">
-                          <span className={text1}>총 토큰 사용량: {(usage.usedTokens / usage.maxTokens) * 100}%</span>
-                          <span className={text3}>{usage.usedTokens} / {usage.maxTokens}</span>
+              {/* 우측 버튼들 (모드 선택 + 전송) */}
+              <div className="flex items-center gap-2">
+                
+                {/* 모드 선택 바텀시트/팝업 */}
+                {showModeModal && (
+                  <div className={`absolute bottom-[110%] right-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 animate-fadeIn`}>
+                    <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                      <div><span className={`text-sm font-medium ${text1}`}>⚡ 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
+                      {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
+                    </button>
+                    <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                      <div><span className={`text-sm font-medium ${text1}`}>🧠 사고 모드</span>
+                      {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 50 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                      {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
+                    </button>
+                    <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                      <div><span className={`text-sm font-medium ${text1}`}>⚙️ 연산 모드</span>
+                      {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 25 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                      {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
+                    </button>
+
+                    <div className={`mt-3 pt-3 border-t ${border}`}>
+                      {isPremium ? (
+                        <div className="w-full">
+                          <div className="flex justify-between text-[11px] mb-1.5 font-medium">
+                            <span className={text1}>총 토큰 사용량: {(usage.usedTokens / usage.maxTokens) * 100}%</span>
+                            <span className={text3}>{usage.usedTokens} / {usage.maxTokens}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                            <div className="bg-[#4a9eff] h-1.5 rounded-full" style={{ width: `${(usage.usedTokens / usage.maxTokens) * 100}%` }}></div>
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                          <div className="bg-[#4a9eff] h-1.5 rounded-full" style={{ width: `${(usage.usedTokens / usage.maxTokens) * 100}%` }}></div>
+                      ) : (
+                        <div className="flex justify-between items-center">
+                          <span className={`text-[11px] ${text3}`}>무료 요금제 사용 중</span>
+                          <button onClick={() => setIsPremium(true)} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between items-center">
-                        <span className={`text-[11px] ${text3}`}>무료 요금제 사용 중</span>
-                        <button onClick={() => setIsPremium(true)} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* 모드 선택 버튼 (전송 버튼 바로 옆) */}
-              <button onClick={() => setShowModeModal(!showModeModal)} 
-                className={`text-[11px] font-medium px-3 py-2 rounded-xl flex items-center gap-1 transition-colors ${dark ? "bg-[#2a2a2a] text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#333] hover:bg-[#e5e5e5]"}`}>
-                {aiMode === 'flash' ? ' 빠른 모드' : aiMode === 'thinking' ? ' 사고 모드' : ' 연산 모드'}
-                <ChevronDown size={14} className="ml-0.5" />
-              </button>
+                {/* 모드 선택 버튼 (전송 버튼 바로 옆) */}
+                <button onClick={() => setShowModeModal(!showModeModal)} 
+                  className={`text-[11px] font-medium px-3 py-2 rounded-xl flex items-center gap-1 transition-colors ${dark ? "bg-[#2a2a2a] text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#333] hover:bg-[#e5e5e5]"}`}>
+                  {aiMode === 'flash' ? '⚡ 빠른 모드' : aiMode === 'thinking' ? '🧠 사고 모드' : '⚙️ 연산 모드'}
+                  <ChevronDown size={14} className="ml-0.5" />
+                </button>
 
-              
-            {store.isLoading || !!store.subChatLoading ? (
-              <button onClick={handleStop} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`} title="응답 정지">
-                <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
-              </button>
-            ) : (
-              <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
-                <Send size={15} className="text-white" />
-              </button>
-            )}
+                {/* 기존 정지/전송 버튼 */}
+                {store.isLoading || !!store.subChatLoading ? (
+                  <button onClick={handleStop} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`} title="응답 정지">
+                    <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
+                  </button>
+                ) : (
+                  <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
+                    <Send size={15} className="text-white" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div> {/* <-- 입력창 테두리 div 닫기 */}
+          <p className={`text-center text-[9px] mt-0.5 ${popMode ? "text-[#f59e0b]" : text4}`}>
+            {popMode ? "⚡ 팝업 모드" : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}
+          </p>
+        </div> {/* <-- 하단 입력 영역 묶음 div 닫기 */}
+      </div> {/* <-- 메인 화면 묶음 div 닫기 */}
+
+      {/* 우측 팝업 채팅 영역 (태블릿/PC) */}
+      {showPopup && popupPos === "right" && !isMobile && (
+        <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
+          <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
+            <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
+            <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+            {renderMessages(activeSub!.messages, "sub-", true)}
+            <div ref={subMessagesEndRef} />
           </div>
         </div>
-        <p className={`text-center text-[9px] mt-0.5 ${popMode ? "text-[#f59e0b]" : text4}`}>{popMode ? "⚡ 팝업 모드" : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}</p>
-      </div>
+      )}
+
+      {/* 로그인/회원가입 모달 */}
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className={`${bg} border ${border} rounded-2xl p-5 w-full max-w-sm flex flex-col gap-4 animate-fadeIn`}>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className={`font-medium ${text1}`}>로그인 / 회원가입</h3>
+              <button onClick={() => setShowAuth(false)} className={text3}><X size={16} /></button>
+            </div>
+            <input type="email" placeholder="이메일" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
+            <input type="password" placeholder="비밀번호" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
+            <div className="flex gap-2 mt-2">
+              <button onClick={handleLogin} className="flex-1 bg-[#4a9eff] text-white py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform">로그인</button>
+              <button onClick={handleSignUp} className={`flex-1 border ${border} ${text1} py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform`}>회원가입</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
-
-    {showPopup && popupPos === "right" && !isMobile && (
-      <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
-        <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
-          <span className="text-xs text-[#f59e0b] font-medium">팝업 채팅</span>
-          <button onClick={closePopup} className={`${text3} p-1`}><X size={14} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
-          {renderMessages(activeSub!.messages, "sub-", true)}
-          <div ref={subMessagesEndRef} />
-        </div>
-      </div>
-    )}
-
-    {/* 로그인 모달 */}
-    {showAuth && (
-      <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-        <div className={`${bg} border ${border} rounded-2xl p-5 w-full max-w-sm flex flex-col gap-4 animate-fadeIn`}>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className={`font-medium ${text1}`}>로그인 / 회원가입</h3>
-            <button onClick={() => setShowAuth(false)} className={text3}><X size={16} /></button>
-          </div>
-          <input type="email" placeholder="이메일" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
-          <input type="password" placeholder="비밀번호" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} className={`w-full ${inputBg} border ${border} rounded-xl px-3 py-2 text-sm outline-none focus:border-[#4a9eff] ${text1}`} />
-          <div className="flex gap-2 mt-2">
-            <button onClick={handleLogin} className="flex-1 bg-[#4a9eff] text-white py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform">로그인</button>
-            <button onClick={handleSignUp} className={`flex-1 border ${border} ${text1} py-2 rounded-xl text-sm font-medium active:scale-95 transition-transform`}>회원가입</button>
-          </div>
-        </div>
-      </div>
-    )}
-
-  </div>
   );
 }
