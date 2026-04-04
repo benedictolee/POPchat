@@ -798,16 +798,16 @@ export default function Home() {
                 {showModeModal && (
                   <div className={`absolute bottom-[110%] right-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 animate-fadeIn`}>
                     <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div><span className={`text-sm font-medium ${text1}`}>⚡ 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
+                      <div><span className={`text-sm font-medium ${text1}`}> 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
                       {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
                     <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div><span className={`text-sm font-medium ${text1}`}>🧠 사고 모드</span>
+                      <div><span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
                       {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 50 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
                       {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
                     <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div><span className={`text-sm font-medium ${text1}`}>⚙️ 연산 모드</span>
+                      <div><span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
                       {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 25 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
                       {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
@@ -836,7 +836,7 @@ export default function Home() {
                 {/* 모드 선택 버튼 (전송 버튼 바로 옆) */}
                 <button onClick={() => setShowModeModal(!showModeModal)} 
                   className={`text-[11px] font-medium px-3 py-2 rounded-xl flex items-center gap-1 transition-colors ${dark ? "bg-[#2a2a2a] text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#333] hover:bg-[#e5e5e5]"}`}>
-                  {aiMode === 'flash' ? '⚡ 빠른 모드' : aiMode === 'thinking' ? '🧠 사고 모드' : '⚙️ 연산 모드'}
+                  {aiMode === 'flash' ? ' 빠른 모드' : aiMode === 'thinking' ? ' 사고 모드' : ' 연산 모드'}
                   <ChevronDown size={14} className="ml-0.5" />
                 </button>
 
@@ -852,6 +852,7 @@ export default function Home() {
                 )}
               </div>
             </div>
+          </div>
           </div> {/* <-- 입력창 테두리 div 닫기 */}
           <p className={`text-center text-[9px] mt-0.5 ${popMode ? "text-[#f59e0b]" : text4}`}>
             {popMode ? "⚡ 팝업 모드" : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}
