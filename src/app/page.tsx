@@ -720,7 +720,7 @@ export default function Home() {
             </button>
               </div>
               <button onClick={handleUnifiedSend}
-                disabled={(!input.trim() && !showCanvas) || store.isLoading || !!store.subChatLoading}
+                disabled={ (!input.trim() && !showCanvas && !attachedFile) || store.isLoading || !!store.subChatLoading }
                 className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
                 <Send size={15} className="text-white" />
               </button>
