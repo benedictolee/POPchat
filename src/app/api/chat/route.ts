@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { supabase } from "@/utils/supabase"; // 🚨 1. Supabase 불러오기 추가!
+import { supabase } from "@/utils/supabase";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -13,15 +13,12 @@ const langMap: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    // 🚨 2. 프론트에서 보낸 userId와 isPremium도 같이 받아오기!
     const { message, context, language, customPrompt, image, aiMode, userId, isPremium } = await req.json();
     
     if (!message && !image) {
       return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
     }
 
-    // aiMode 값에 따라 진짜 모델 이름 매핑하기
-    // (참고: 만약 구글 API에서 3.0 버전을 찾을 수 없다는 에러가 나면 2.5로 숫자를 낮춰주세요!)
     let modelName = 'gemini-2.5-flash' ; 
     
     if (aiMode === 'thinking') {
@@ -59,8 +56,10 @@ export async function POST(req: NextRequest) {
     });
 
     const text = result.response.text();
+    
+    // 🚨 [핵심 수정 부분 1] 구글 API가 알려주는 '진짜 토큰 사용량'을 뽑아옵니다.
+    const actualTokens = result.response.usageMetadata?.totalTokenCount || 0;
 
-    // 🚨 3. AI 답변이 무사히 생성되었으므로, DB 사용량 숫자를 올립니다! 🚨
     if (userId) {
       const today = new Date().toLocaleDateString('en-CA');
       const { data: usageData } = await supabase.from('daily_usage').select('*').eq('user_id', userId).eq('date', today).single();
@@ -74,9 +73,10 @@ export async function POST(req: NextRequest) {
           if (aiMode === 'thinking') updateData.thinking_count = usageData.thinking_count + 1;
           if (aiMode === 'pro') updateData.pro_count = usageData.pro_count + 1;
         } else {
-          // 유료 유저: 모델에 따라 토큰 차감
-          if (aiMode === 'thinking') updateData.used_tokens = usageData.used_tokens + 50;
-          if (aiMode === 'pro') updateData.used_tokens = usageData.used_tokens + 25;
+          // 🚨 [핵심 수정 부분 2] 유료 유저는 이제 25, 50이 아니라 '실제로 쓴 토큰량'을 더해줍니다!
+          if (aiMode === 'thinking' || aiMode === 'pro') {
+            updateData.used_tokens = usageData.used_tokens + actualTokens;
+          }
         }
 
         if (Object.keys(updateData).length > 0) {
