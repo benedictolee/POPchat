@@ -25,9 +25,9 @@ export async function POST(req: NextRequest) {
     let modelName = 'gemini-3.0-flash'; 
     
     if (aiMode === 'thinking') {
-      modelName = 'gemini-3.0-flash-thinking-exp-01-21'; 
+      modelName = 'gemini-3.1-flash-thinking-exp-01-21'; 
     } else if (aiMode === 'pro') {
-      modelName = 'gemini-3.0-pro'; 
+      modelName = 'gemini-3.1-pro'; 
     }
 
     const model = genAI.getGenerativeModel({ model: modelName });
