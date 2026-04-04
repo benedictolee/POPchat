@@ -49,6 +49,19 @@ export default function Home() {
   const isDragging = useRef(false);
   const dragStart = useRef(0);
   const dragStartSize = useRef(35);
+  // [추가] 통신 취소를 위한 컨트롤러
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // [추가] 응답 정지 핸들러
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  };
+
+    // Auth 상태
+
 
     // Auth 상태
   const [showAuth, setShowAuth] = useState(false);
@@ -158,42 +171,65 @@ export default function Home() {
     return session.messages.slice(-6).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join("\n\n");
   }, [session]);
 
-  // [FIX#5] sendToApi에 image 파라미터 추가
-  const sendToApi = async (message: string, context?: string, image?: string) => {
+  // [수정] 통신 취소를 위한 signal 파라미터 추가
+  const sendToApi = async (message: string, context?: string, image?: string, signal?: AbortSignal) => {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image }),
+      signal, // <-- 여기 추가됨
     });
     return res.json();
   };
 
-  // [FIX#5] image 파라미터 추가
+
+  // [수정] Main 채팅 전송 (정지 기능 포함)
   const handleSendMain = async (question: string, image?: string) => {
     ensureSession();
     const msgId = genId();
     store.addMessage({ id: msgId, question, answer: "", bookmarked: false });
     store.updateMessage(msgId, { question });
     store.setLoading(true);
+
+    abortControllerRef.current = new AbortController();
     try {
-      const data = await sendToApi(question, undefined, image);
+      const data = await sendToApi(question, undefined, image, abortControllerRef.current.signal);
       store.updateMessage(msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-    } catch { store.updateMessage(msgId, { answer: "⚠️ 네트워크 오류" }); }
-    finally { store.setLoading(false); }
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        store.updateMessage(msgId, { answer: "⚠️ 생성이 취소되었습니다." });
+      } else {
+        store.updateMessage(msgId, { answer: "⚠️ 네트워크 오류" });
+      }
+    } finally {
+      store.setLoading(false);
+      abortControllerRef.current = null;
+    }
   };
 
-  // [FIX#5] image 파라미터 추가
+  // [수정] Sub 채팅 전송 (정지 기능 포함)
   const handleSendSub = async (question: string, subId: string, image?: string) => {
     const msgId = genId();
     store.addSubMessage(subId, { id: msgId, question, answer: "", bookmarked: false });
     store.setSubChatLoading(subId);
     const sub = session?.subChats.find((s) => s.id === subId);
     const subContext = sub ? sub.parentContext + "\n\n" + sub.messages.slice(-4).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join("\n\n") : "";
+
+    abortControllerRef.current = new AbortController();
     try {
-      const data = await sendToApi(question, subContext, image);
+      const data = await sendToApi(question, subContext, image, abortControllerRef.current.signal);
       store.updateSubMessage(subId, msgId, { answer: data.error ? `⚠️ ${data.error}` : data.answer });
-    } catch { store.updateSubMessage(subId, msgId, { answer: "⚠️ 네트워크 오류" }); }
-    finally { store.setSubChatLoading(null); }
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        store.updateSubMessage(subId, msgId, { answer: "⚠️ 생성이 취소되었습니다." });
+      } else {
+        store.updateSubMessage(subId, msgId, { answer: "⚠️ 네트워크 오류" });
+      }
+    } finally {
+      store.setSubChatLoading(null);
+      abortControllerRef.current = null;
+    }
   };
+
 
   // [FIX#4] stroke 시작 전 현재 상태 저장
   const saveStroke = () => {
@@ -719,11 +755,20 @@ export default function Home() {
               <Plus size={15} />
             </button>
               </div>
-              <button onClick={handleUnifiedSend}
-                disabled={ (!input.trim() && !showCanvas && !attachedFile) || store.isLoading || !!store.subChatLoading }
-                className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
-                <Send size={15} className="text-white" />
-              </button>
+                            {store.isLoading || !!store.subChatLoading ? (
+                <button onClick={handleStop}
+                  className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`}
+                  title="응답 정지">
+                  <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
+                </button>
+              ) : (
+                <button onClick={handleUnifiedSend}
+                  disabled={!input.trim() && !showCanvas && !attachedFile}
+                  className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
+                  <Send size={15} className="text-white" />
+                </button>
+              )}
+
             </div>
           </div>
           <p className={`text-center text-[9px] mt-0.5 ${popMode ? "text-[#f59e0b]" : text4}`}>
