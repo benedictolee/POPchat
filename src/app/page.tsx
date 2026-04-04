@@ -68,28 +68,75 @@ export default function Home() {
     }
   };
 
-    // Auth 상태
-
-
-    // Auth 상태
+  // Auth 상태
   const [showAuth, setShowAuth] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // [추가됨] 1. 유저의 요금제 및 사용량 데이터를 DB에서 가져오는 함수
+  const fetchUserData = async (userId: string) => {
+    // 1) 프로필 가져오기 (결제 여부)
+    let { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+
+    // 💡 최초 가입자라서 profile이 없다면? 새로 만들어줍니다.
+    if (!profile) {
+      const { data: newProfile } = await supabase.from('profiles').insert([{ id: userId }]).select().single();
+      profile = newProfile;
+    }
+    
+    if (profile) setIsPremium(profile.is_premium);
+
+    // 2) 오늘자 daily_usage 가져오기 (YYYY-MM-DD 형식)
+    const today = new Date().toLocaleDateString('en-CA'); 
+    let { data: usageData } = await supabase.from('daily_usage').select('*')
+      .eq('user_id', userId).eq('date', today).single();
+
+    // 💡 오늘 처음 접속했다면? 카운트가 0인 오늘자 데이터를 새로 생성합니다! (이게 자정 초기화 마법입니다)
+    if (!usageData) {
+      const { data: newUsage } = await supabase.from('daily_usage')
+        .insert([{ user_id: userId, date: today }]).select().single();
+      usageData = newUsage;
+    }
+
+    if (usageData) {
+      setUsage({
+        flash: usageData.flash_count,
+        pro: usageData.pro_count,
+        thinking: usageData.thinking_count,
+        usedTokens: usageData.used_tokens,
+        maxTokens: profile?.premium_max_tokens || 1000
+      });
+    }
+  };
+
+  // [수정됨] 2. 로그인 상태 변화를 감지하고 데이터 불러오기
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUser(data.user);
+      if (data.user) fetchUserData(data.user.id); // 로그인되어 있으면 데이터 로드
+    });
+
     const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
       setCurrentUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserData(session.user.id);
+      } else {
+        // 로그아웃 시 상태 0으로 초기화
+        setIsPremium(false);
+        setUsage({ flash: 0, pro: 0, thinking: 0, usedTokens: 0, maxTokens: 1000 });
+      }
     });
     return () => authListener.subscription.unsubscribe();
   }, []);
 
+  // 회원가입 함수
   const handleSignUp = async () => {
     const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
     if (error) alert("가입 실패: " + error.message);
     else { alert("가입 성공! 로그인 되었습니다."); setShowAuth(false); }
   };
+
 
   const handleLogin = async () => {
     const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
