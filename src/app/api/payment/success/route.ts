@@ -42,9 +42,9 @@ export async function GET(req: NextRequest) {
 
     // 2. 결제 최종 성공! DB 업데이트 진행
     // 아까 orderId에 숨겨뒀던 유저 ID 힌트(앞 5글자)를 뽑아옵니다.
-    const shortUserId = orderId.split('_')[2];
+    const fullUserId = orderId.split('_')[2];
 
-    if (shortUserId) {
+    if (fullUserId) {
       // 힌트와 일치하는 유저를 찾아서 Premium 도장을 찍어줍니다.
       const { data: users } = await supabaseAdmin
         .from('profiles')
@@ -53,23 +53,19 @@ export async function GET(req: NextRequest) {
         .limit(1);
 
       if (users && users.length > 0) {
-        const fullUserId = users[0].id;
-        await supabaseAdmin
-          .from('profiles')
-          .update({ 
-            is_premium: true,           // 유료 유저로 전환!
-            premium_max_tokens: 100000  // 토큰 한도 10만 개로 빵빵하게 충전!
-          }) 
-          .eq('id', fullUserId);
-      }
+        const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ 
+          is_premium: true,           // 유료 유저로 전환!
+          premium_max_tokens: 100000  // 토큰 한도 충전!
+        }) 
+        .eq('id', fullUserId);
+
+      if (updateError) console.error("DB 업데이트 에러:", updateError);
     }
 
     // 3. 모든 작업이 끝나면 유저를 다시 앱 메인 화면으로 돌려보냅니다.
     return NextResponse.redirect(new URL('/?payment=success', req.url));
-
-  } catch (error) {
-    console.error('결제 처리 에러:', error);
-    return NextResponse.redirect(new URL('/?error=server_error', req.url));
   }
 }
 
