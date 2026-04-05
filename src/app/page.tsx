@@ -158,7 +158,7 @@ const handleUpgrade = async () => {
 
     try {
       // 1. 토스 결제 모듈 불러오기 (여기에 복사한 테스트 클라이언트 키를 넣으세요!)
-      const tossPayments = await loadTossPayments("test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq"); 
+      const tossPayments = await loadTossPayments("test_ck_yL0qZ4G1VOKOmx2bWx4oVoWb2MQY"); 
 
       // 2. 결제창 띄우기
       await tossPayments.requestPayment("카드", {
