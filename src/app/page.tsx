@@ -918,7 +918,7 @@ const handleUpgrade = () => {
                       </div>
                       {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
-                    // 580번 줄 근처 (모드 선택 모달 내부)
+                  
 <div className={`mt-3 pt-3 border-t ${border}`}>
   {isPremium ? (
     <div className="w-full">
