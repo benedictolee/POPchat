@@ -163,7 +163,7 @@ const handleUpgrade = async () => {
       // 2. 결제창 띄우기
       await tossPayments.requestPayment("카드", {
         amount: 9900,                                   // 결제 금액 (예: 9,900원)
-        orderId: `order_${Date.now()}_${currentUser.id.substring(0, 5)}`, // 주문번호 (절대 겹치지 않게 고유해야 함)
+        orderId: `order_${Date.now()}_${currentUser.id}`, // 👈 substring을 지우고 전체 ID를 보냅니다!
         orderName: "POPchat 프리미엄 1개월권",             // 결제창에 뜰 상품명
         customerName: currentUser.email.split('@')[0],  // 고객 이름
         successUrl: `${window.location.origin}/api/payment/success`, // 2부에서 만들 '결제 성공 API' 주소
