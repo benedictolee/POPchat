@@ -24,6 +24,32 @@ const langMap: Record<string, string> = {
 export async function POST(req: NextRequest) {
   try {
     const { message, context, language, customPrompt, image, aiMode, userId, isPremium } = await req.json();
+        
+    
+    if (userId) {
+      const today = new Date().toLocaleDateString('en-CA');
+      
+      // 1. 유저의 진짜 요금제와 오늘 사용량을 마스터 키로 몰래 조회합니다.
+      const { data: profile } = await supabaseAdmin.from('profiles').select('is_premium, premium_max_tokens').eq('id', userId).single();
+      const { data: usage } = await supabaseAdmin.from('daily_usage').select('*').eq('user_id', userId).eq('date', today).single();
+
+      if (profile && usage) {
+        // 2. 무료 유저 컷!
+        if (!profile.is_premium) {
+          if (aiMode === 'flash' && usage.flash_count >= 30) return NextResponse.json({ error: "오늘 무료 횟수를 모두 소진했습니다." }, { status: 403 });
+          if (aiMode === 'thinking' && usage.thinking_count >= 1) return NextResponse.json({ error: "오늘 무료 횟수를 모두 소진했습니다. 업그레이드 해주세요!" }, { status: 403 });
+          if (aiMode === 'pro' && usage.pro_count >= 1) return NextResponse.json({ error: "오늘 무료 횟수를 모두 소진했습니다. 업그레이드 해주세요!" }, { status: 403 });
+        } 
+        // 3. 유료 유저 컷! (토큰 잔액 검사)
+        else {
+          if (usage.used_tokens >= profile.premium_max_tokens) {
+            return NextResponse.json({ error: "토큰 한도를 초과했습니다. 충전이 필요합니다." }, { status: 403 });
+          }
+        }
+      }
+    }
+
+
     
     if (!message && !image) {
       return NextResponse.json({ error: '메시지를 입력해주세요.' }, { status: 400 });
