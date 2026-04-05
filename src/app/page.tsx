@@ -5,6 +5,7 @@ import { supabase } from "@/utils/supabase";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { loadTossPayments } from '@tosspayments/payment-sdk';
 import {
   Send, Sparkles, Bookmark, BookmarkCheck, Plus, MessageSquare,
   X, Menu, PanelLeftOpen, PanelRightOpen, Trash2,
@@ -146,6 +147,31 @@ export default function Home() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+const handleUpgrade = async () => {
+    if (!currentUser) {
+      alert("로그인이 필요합니다.");
+      setShowAuth(true);
+      return;
+    }
+
+    try {
+      // 1. 토스 결제 모듈 불러오기 (여기에 복사한 테스트 클라이언트 키를 넣으세요!)
+      const tossPayments = await loadTossPayments("test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq"); 
+
+      // 2. 결제창 띄우기
+      await tossPayments.requestPayment("카드", {
+        amount: 9900,                                   // 결제 금액 (예: 9,900원)
+        orderId: `order_${Date.now()}_${currentUser.id.substring(0, 5)}`, // 주문번호 (절대 겹치지 않게 고유해야 함)
+        orderName: "POPchat 프리미엄 1개월권",             // 결제창에 뜰 상품명
+        customerName: currentUser.email.split('@')[0],  // 고객 이름
+        successUrl: `${window.location.origin}/api/payment/success`, // 2부에서 만들 '결제 성공 API' 주소
+        failUrl: `${window.location.origin}/`,          // 실패 시 돌아올 주소 (메인 화면)
+      });
+    } catch (error) {
+      console.error("결제창 호출 실패:", error);
+    }
   };
 
   
@@ -898,7 +924,7 @@ export default function Home() {
                       ) : (
                         <div className="flex justify-between items-center">
                           <span className={`text-[11px] ${text3}`}>무료 요금제 사용 중</span>
-                          <button onClick={() => setIsPremium(true)} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
+                          <button onClick={handleUpgrade} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
                         </div>
                       )}
                     </div>
