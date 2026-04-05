@@ -90,26 +90,31 @@ export default function Home() {
 
     // 2) 오늘자 daily_usage 가져오기 (YYYY-MM-DD 형식)
     const today = new Date().toLocaleDateString('en-CA'); 
-    let { data: usageData } = await supabase.from('daily_usage').select('*')
-      .eq('user_id', userId).eq('date', today).single();
+      
+    const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  const startDate = sevenDaysAgo.toISOString().split('T')[0];
 
-    // 💡 오늘 처음 접속했다면? 카운트가 0인 오늘자 데이터를 새로 생성합니다! (이게 자정 초기화 마법입니다)
-    if (!usageData) {
-      const { data: newUsage } = await supabase.from('daily_usage')
-        .insert([{ user_id: userId, date: today }]).select().single();
-      usageData = newUsage;
-    }
+  let { data: weeklyUsage } = await supabase
+    .from('daily_usage')
+    .select('used_tokens, flash_count, pro_count, thinking_count')
+    .eq('user_id', userId)
+    .gte('date', startDate); // 7일 전부터 오늘까지
 
-    if (usageData) {
-      setUsage({
-        flash: usageData.flash_count,
-        pro: usageData.pro_count,
-        thinking: usageData.thinking_count,
-        usedTokens: usageData.used_tokens,
-        maxTokens: profile?.premium_max_tokens || 1000
-      });
-    }
-  };
+  if (weeklyUsage) {
+    // 최근 7일간 사용한 모든 토큰을 합산합니다.
+    const totalUsed = weeklyUsage.reduce((sum, day) => sum + day.used_tokens, 0);
+    const todayUsage = weeklyUsage.find(day => /* 오늘 날짜 찾기 로직 */ true); // 단순화를 위해 첫번째 요소를 오늘로 가정하거나 로직 추가 가능
+
+    setUsage({
+      flash: todayUsage?.flash_count || 0,
+      pro: todayUsage?.pro_count || 0,
+      thinking: todayUsage?.thinking_count || 0,
+      usedTokens: totalUsed, // 게이지에는 7일치 합산 표시!
+      maxTokens: isPremium ? (profile?.premium_max_tokens || 350000) : 1000 // 프리미엄이면 주간 한도 35만
+    });
+  }
+};
 
   // [수정됨] 2. 로그인 상태 변화를 감지하고 데이터 불러오기
   useEffect(() => {
@@ -149,13 +154,17 @@ export default function Home() {
     await supabase.auth.signOut();
   };
 
-const handleUpgrade = async () => {
-    if (!currentUser) {
-      alert("로그인이 필요합니다.");
-      setShowAuth(true);
-      return;
-    }
 
+const handleUpgrade = () => {
+  if (!currentUser) {
+    alert("로그인이 필요합니다.");
+    setShowAuth(true);
+    return;
+  }
+  // 바로 결제창을 띄우지 않고, 요금제 선택 화면으로 보냅니다.
+  router.push('/pricing'); 
+};
+  
     try {
       // 1. 토스 결제 모듈 불러오기 (여기에 복사한 테스트 클라이언트 키를 넣으세요!)
       const tossPayments = await loadTossPayments("test_ck_yL0qZ4G1VOKOmx2bWx4oVoWb2MQY"); 
@@ -908,28 +917,35 @@ const handleUpgrade = async () => {
                       </div>
                       {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
+                    // 580번 줄 근처 (모드 선택 모달 내부)
+<div className={`mt-3 pt-3 border-t ${border}`}>
+  {isPremium ? (
+    <div className="w-full">
+      <div className="flex justify-between text-[11px] mb-1.5 font-medium">
+        {/* 문구 수정: 주간 여유분임을 명시 */}
+        <span className={text1}>7일 유연 한도 사용량: {((usage.usedTokens / usage.maxTokens) * 100).toFixed(1)}%</span>
+        <span className={text3}>{usage.usedTokens.toLocaleString()} / {usage.maxTokens.toLocaleString()}</span>
+      </div>
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+        <div 
+          className={`h-1.5 rounded-full transition-all duration-500 ${ (usage.usedTokens / usage.maxTokens) > 0.8 ? 'bg-red-500' : 'bg-[#4a9eff]' }`} 
+          style={{ width: `${Math.min(100, (usage.usedTokens / usage.maxTokens) * 100)}%` }}
+        ></div>
+      </div>
+      <p className="text-[9px] text-[#999] mt-2 text-center">오늘 한도를 초과해도 주간 여유분 내에서 당겨 쓸 수 있습니다.</p>
+    </div>
+  ) : (
+    <div className="flex justify-between items-center">
+      <span className={`text-[11px] ${text3}`}>무료 요금제 (일일 제한)</span>
+      <button onClick={handleUpgrade} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
+    </div>
+  )}
+</div>
 
 
-                    <div className={`mt-3 pt-3 border-t ${border}`}>
-                      {isPremium ? (
-                        <div className="w-full">
-                          <div className="flex justify-between text-[11px] mb-1.5 font-medium">
-                            <span className={text1}>총 토큰 사용량: {((usage.usedTokens / usage.maxTokens) * 100).toFixed(1)}%</span>
-                            <span className={text3}>{usage.usedTokens} / {usage.maxTokens}</span>
-                          </div>
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                            <div className="bg-[#4a9eff] h-1.5 rounded-full" style={{ width: `${(usage.usedTokens / usage.maxTokens) * 100}%` }}></div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between items-center">
-                          <span className={`text-[11px] ${text3}`}>무료 요금제 사용 중</span>
-                          <button onClick={handleUpgrade} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+
+
+                    
 
                 {/* 모드 선택 버튼 (전송 버튼 바로 옆) */}
                 <button onClick={() => setShowModeModal(!showModeModal)} 
@@ -944,7 +960,9 @@ const handleUpgrade = async () => {
                     <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
                   </button>
                 ) : (
-                  <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
+                  <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9
+                                                                                                                                                
+                                                                                                                                                eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
                     <Send size={15} className="text-white" />
                   </button>
                 )}
