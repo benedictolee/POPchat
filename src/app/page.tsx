@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { loadTossPayments } from '@tosspayments/payment-sdk';
+import { useRouter } from "next/navigation";
 import {
   Send, Sparkles, Bookmark, BookmarkCheck, Plus, MessageSquare,
   X, Menu, PanelLeftOpen, PanelRightOpen, Trash2,
@@ -22,7 +23,7 @@ export default function Home() {
   const session = store.getCurrentSession();
   const { settings } = store;
   const dark = settings.theme === "dark";
-
+  const router = useRouter();  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const subMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -960,9 +961,7 @@ const handleUpgrade = () => {
                     <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
                   </button>
                 ) : (
-                  <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9
-                                                                                                                                                
-                                                                                                                                                eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
+                  <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
                     <Send size={15} className="text-white" />
                   </button>
                 )}
