@@ -851,23 +851,38 @@ export default function Home() {
               {/* 우측 버튼들 (모드 선택 + 전송) */}
               <div className="flex items-center gap-2">
                 
-                {/* 모드 선택 바텀시트/팝업 */}
+                                {/* 모드 선택 바텀시트/팝업 */}
                 {showModeModal && (
                   <div className={`absolute bottom-[110%] right-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 animate-fadeIn`}>
+                    
                     <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div><span className={`text-sm font-medium ${text1}`}> 빠른 모드</span><p className={`text-[10px] ${text3}`}>일 30회 무료 (가장 빠름)</p></div>
+                      <div>
+                        <span className={`text-sm font-medium ${text1}`}> 빠른 모드</span>
+                        <p className={`text-[10px] ${text3}`}>가장 빠름</p>
+                      </div>
                       {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
+                    
                     <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div><span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
-                      {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 50 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                      <div>
+                        <span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
+                        <p className={`text-[10px] ${text3}`}>
+                          {isPremium ? '기억력, 사고력 특화' : '기억력, 사고력 특화 (일 1회 무료)'}
+                        </p>
+                      </div>
                       {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
+                    
                     <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div><span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
-                      {isPremium ? <p className={`text-[10px] text-[#f59e0b]`}>1회당 25 토큰 차감</p> : <p className={`text-[10px] ${text3}`}>일 1회 무료 (업그레이드시 토큰 공유)</p>}</div>
+                      <div>
+                        <span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
+                        <p className={`text-[10px] ${text3}`}>
+                          {isPremium ? '코딩, 수학 계산에 특화' : '코딩, 수학 계산에 특화 (일 1회 무료)'}
+                        </p>
+                      </div>
                       {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
                     </button>
+
 
                     <div className={`mt-3 pt-3 border-t ${border}`}>
                       {isPremium ? (
