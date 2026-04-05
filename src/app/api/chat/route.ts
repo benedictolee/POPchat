@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { supabase } from "@/utils/supabase";
+// 👇 1. 기존 프론트엔드용 supabase 대신, 직접 만들 수 있게 툴을 가져옵니다.
+import { createClient } from '@supabase/supabase-js'; 
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+// 🚨 2. 백엔드 전용 '마스터 키'를 장착한 어드민 클라이언트를 생성합니다.
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! 
+);
+
+// ... (중간 코드 동일) ...
+
 
 const langMap: Record<string, string> = {
   ko: '한국어로 답변해주세요.',
@@ -62,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     if (userId) {
       const today = new Date().toLocaleDateString('en-CA');
-      const { data: usageData } = await supabase.from('daily_usage').select('*').eq('user_id', userId).eq('date', today).single();
+      const { data: usageData } = await supabaseAdmin.from('daily_usage').select('*').eq('user_id', userId).eq('date', today).single();
 
       if (usageData) {
         let updateData: any = {};
@@ -80,7 +90,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (Object.keys(updateData).length > 0) {
-          await supabase.from('daily_usage').update(updateData).eq('id', usageData.id);
+          await supabaseAdmin.from('daily_usage').update(updateData).eq('id', usageData.id);
         }
       }
     }
