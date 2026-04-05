@@ -2,12 +2,21 @@
 
 import { useRouter } from 'next/navigation';
 import { loadTossPayments } from '@tosspayments/payment-sdk';
+import { supabase } from '@/utils/supabase'; 
+import { useEffect, useState } from 'react';
 
 export default function PricingPage() {
   const router = useRouter();
 
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null));
+  }, []);
+  
   // 토스 결제창 띄우는 함수!
   const handlePayment = async (plan: 'basic' | 'pro', price: number) => {
+    if (!userId) return alert('로그인 정보가 없습니다.');
     try {
       // 재권님의 토스 테스트 클라이언트 키
       const clientKey = 'test_ck_yL0qZ4G1VOKOmx2bWx4oVoWb2MQY'; 
@@ -23,7 +32,7 @@ export default function PricingPage() {
         orderName: orderName,
         customerName: 'POPchat 유저', 
         // 🚨 결제 성공 시 이동할 주소 (플랜 종류를 쿼리로 달아서 보냅니다)
-        successUrl: `${window.location.origin}/api/payment/success?plan=${plan}`, 
+        successUrl: `${window.location.origin}/api/payment/success?plan=${plan}&userId=${userId}`, 
         failUrl: `${window.location.origin}/`,
       });
     } catch (error) {
