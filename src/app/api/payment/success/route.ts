@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. 토스 서버에 "이 결제 진짜 맞지?" 하고 최종 확인(승인) 요청
-    const secretKey = "test_sk_zXLkKEypNArWmo5npnl3lmeaxYG5"; 
+    const secretKey = "test_sk_nRQoOaPz8LLw5MexQka98y47BMw6"; 
     const encryptedSecretKey = Buffer.from(secretKey + ':').toString('base64');
 
     const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
