@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         Authorization: `Basic ${encryptedSecretKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ paymentKey, orderId, amount }),
+            body: JSON.stringify({ paymentKey, orderId, amount: Number(amount) }),
     });
 
     const data = await response.json();
