@@ -5,15 +5,13 @@ import { supabase } from "@/utils/supabase";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { loadTossPayments } from '@tosspayments/payment-sdk';
 import { useRouter } from "next/navigation";
 import {
   Send, Sparkles, Bookmark, BookmarkCheck, Plus, MessageSquare,
   X, Menu, PanelLeftOpen, PanelRightOpen, Trash2,
   Settings, Search, User, ChevronLeft, Moon, Sun, Globe, MessageCircle, Zap, Undo2, ChevronDown, Check
 } from "lucide-react";
- 
-  
+
 const genId = () => Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
 const langNames: Record<string, string> = { ko: "한국어", en: "English", zh: "中文", ja: "日本語" };
 const posNames: Record<string, string> = { bottom: "아래", left: "왼쪽", right: "오른쪽" };
@@ -24,6 +22,7 @@ export default function Home() {
   const { settings } = store;
   const dark = settings.theme === "dark";
   const router = useRouter();  
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const subMessagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -41,14 +40,15 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [shortcutInput, setShortcutInput] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
-  // [수정/추가] 파일 여러 개 첨부 배열 및 요금제/모드 관련 상태
+  
   const [attachedFiles, setAttachedFiles] = useState<{ name: string, base64: string, isImage: boolean }[]>([]);
   const [aiMode, setAiMode] = useState<'flash' | 'thinking' | 'pro'>('flash');
   const [showModeModal, setShowModeModal] = useState(false);
-  const [isPremium, setIsPremium] = useState(false); // true로 바꾸면 테스트 시 프리미엄 모드로 작동
+  const [isPremium, setIsPremium] = useState(false); 
   const [usage, setUsage] = useState({
-    flash: 0, pro: 0, thinking: 0, usedTokens: 600, maxTokens: 1000
+    flash: 0, pro: 0, thinking: 0, usedTokens: 0, maxTokens: 1000
   });
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -59,10 +59,8 @@ export default function Home() {
   const isDragging = useRef(false);
   const dragStart = useRef(0);
   const dragStartSize = useRef(35);
-  // [추가] 통신 취소를 위한 컨트롤러
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // [추가] 응답 정지 핸들러
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -70,18 +68,14 @@ export default function Home() {
     }
   };
 
-  // Auth 상태
   const [showAuth, setShowAuth] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // [추가됨] 1. 유저의 요금제 및 사용량 데이터를 DB에서 가져오는 함수
   const fetchUserData = async (userId: string) => {
-    // 1) 프로필 가져오기 (결제 여부)
     let { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
 
-    // 💡 최초 가입자라서 profile이 없다면? 새로 만들어줍니다.
     if (!profile) {
       const { data: newProfile } = await supabase.from('profiles').insert([{ id: userId }]).select().single();
       profile = newProfile;
@@ -89,39 +83,34 @@ export default function Home() {
     
     if (profile) setIsPremium(profile.is_premium);
 
-    // 2) 오늘자 daily_usage 가져오기 (YYYY-MM-DD 형식)
-    const today = new Date().toLocaleDateString('en-CA'); 
-      
     const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  const startDate = sevenDaysAgo.toISOString().split('T')[0];
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    const startDate = sevenDaysAgo.toISOString().split('T')[0];
 
-  let { data: weeklyUsage } = await supabase
-    .from('daily_usage')
-    .select('used_tokens, flash_count, pro_count, thinking_count')
-    .eq('user_id', userId)
-    .gte('date', startDate); // 7일 전부터 오늘까지
+    let { data: weeklyUsage } = await supabase
+      .from('daily_usage')
+      .select('used_tokens, flash_count, pro_count, thinking_count')
+      .eq('user_id', userId)
+      .gte('date', startDate); 
 
-  if (weeklyUsage) {
-    // 최근 7일간 사용한 모든 토큰을 합산합니다.
-    const totalUsed = weeklyUsage.reduce((sum, day) => sum + day.used_tokens, 0);
-    const todayUsage = weeklyUsage.find(day => /* 오늘 날짜 찾기 로직 */ true); // 단순화를 위해 첫번째 요소를 오늘로 가정하거나 로직 추가 가능
+    if (weeklyUsage) {
+      const totalUsed = weeklyUsage.reduce((sum, day) => sum + day.used_tokens, 0);
+      const todayUsage = weeklyUsage.find(day => true); 
 
-    setUsage({
-      flash: todayUsage?.flash_count || 0,
-      pro: todayUsage?.pro_count || 0,
-      thinking: todayUsage?.thinking_count || 0,
-      usedTokens: totalUsed, // 게이지에는 7일치 합산 표시!
-      maxTokens: isPremium ? (profile?.premium_max_tokens || 350000) : 1000 // 프리미엄이면 주간 한도 35만
-    });
-  }
-};
+      setUsage({
+        flash: todayUsage?.flash_count || 0,
+        pro: todayUsage?.pro_count || 0,
+        thinking: todayUsage?.thinking_count || 0,
+        usedTokens: totalUsed, 
+        maxTokens: isPremium ? (profile?.premium_max_tokens || 350000) : 1000 
+      });
+    }
+  };
 
-  // [수정됨] 2. 로그인 상태 변화를 감지하고 데이터 불러오기
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setCurrentUser(data.user);
-      if (data.user) fetchUserData(data.user.id); // 로그인되어 있으면 데이터 로드
+      if (data.user) fetchUserData(data.user.id);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
@@ -129,7 +118,6 @@ export default function Home() {
       if (session?.user) {
         fetchUserData(session.user.id);
       } else {
-        // 로그아웃 시 상태 0으로 초기화
         setIsPremium(false);
         setUsage({ flash: 0, pro: 0, thinking: 0, usedTokens: 0, maxTokens: 1000 });
       }
@@ -137,13 +125,11 @@ export default function Home() {
     return () => authListener.subscription.unsubscribe();
   }, []);
 
-  // 회원가입 함수
   const handleSignUp = async () => {
     const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
     if (error) alert("가입 실패: " + error.message);
     else { alert("가입 성공! 로그인 되었습니다."); setShowAuth(false); }
   };
-
 
   const handleLogin = async () => {
     const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
@@ -155,47 +141,23 @@ export default function Home() {
     await supabase.auth.signOut();
   };
 
-
-const handleUpgrade = () => {
-  if (!currentUser) {
-    alert("로그인이 필요합니다.");
-    setShowAuth(true);
-    return;
-  }
-  // 바로 결제창을 띄우지 않고, 요금제 선택 화면으로 보냅니다.
-  router.push('/pricing'); 
-};
-  
-    try {
-      // 1. 토스 결제 모듈 불러오기 (여기에 복사한 테스트 클라이언트 키를 넣으세요!)
-      const tossPayments = await loadTossPayments("test_ck_yL0qZ4G1VOKOmx2bWx4oVoWb2MQY"); 
-
-      // 2. 결제창 띄우기
-      await tossPayments.requestPayment("카드", {
-        amount: 9900,                                   // 결제 금액 (예: 9,900원)
-        orderId: `order_${Date.now()}_${currentUser.id}`, // 👈 substring을 지우고 전체 ID를 보냅니다!
-        orderName: "POPchat 프리미엄 1개월권",             // 결제창에 뜰 상품명
-        customerName: currentUser.email.split('@')[0],  // 고객 이름
-        successUrl: `${window.location.origin}/api/payment/success`, // 2부에서 만들 '결제 성공 API' 주소
-        failUrl: `${window.location.origin}/`,          // 실패 시 돌아올 주소 (메인 화면)
-      });
-    } catch (error) {
-      console.error("결제창 호출 실패:", error);
+  // 🚨 수정된 결제창 이동 로직 (이전의 지저분한 코드는 모두 제거됨)
+  const handleUpgrade = () => {
+    if (!currentUser) {
+      alert("로그인이 필요합니다.");
+      setShowAuth(true);
+      return;
     }
+    router.push('/pricing'); 
   };
 
-  
-  // [FIX#1] 스크롤 추적용
   const prevMsgLenRef = useRef(0);
   const prevSubChatsRef = useRef(0);
-
-  // [FIX#4] Undo 히스토리
   const strokeHistoryRef = useRef<ImageData[]>([]);
 
   useEffect(() => { store.loadSessions(); }, []);
   useEffect(() => { store.saveSessions(); }, [store.sessions]);
 
-  // [FIX#1] 메인 채팅 스크롤 - 메시지가 실제로 추가됐을 때만
   useEffect(() => {
     const curLen = session?.messages.length ?? 0;
     if (curLen > prevMsgLenRef.current) {
@@ -207,7 +169,6 @@ const handleUpgrade = () => {
     prevMsgLenRef.current = curLen;
   }, [session?.messages.length]);
 
-  // [FIX#1] 서브 채팅 스크롤 - 서브챗 메시지가 실제로 추가됐을 때만
   useEffect(() => {
     if (!activeSubId || !session) return;
     const totalSubMsgs = session.subChats.reduce((a, sc) => a + sc.messages.length, 0);
@@ -262,20 +223,15 @@ const handleUpgrade = () => {
     return session.messages.slice(-6).map((m) => `Q: ${m.question}\nA: ${m.answer}`).join("\n\n");
   }, [session]);
 
-
   const sendToApi = async (message: string, context?: string, image?: string, signal?: AbortSignal) => {
     const res = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      // 👇 body 맨 끝에 userId와 isPremium을 추가해서 보냅니다!
       body: JSON.stringify({ message, context, language: settings.language, customPrompt: settings.customPrompt, image, aiMode, userId: currentUser?.id, isPremium }), 
       signal,
     });
     return res.json();
   };
 
-
-
-  // [수정] Main 채팅 전송 (정지 기능 포함)
   const handleSendMain = async (question: string, image?: string) => {
     ensureSession();
     const msgId = genId();
@@ -300,7 +256,6 @@ const handleUpgrade = () => {
     }
   };
 
-  // [수정] Sub 채팅 전송 (정지 기능 포함)
   const handleSendSub = async (question: string, subId: string, image?: string) => {
     const msgId = genId();
     store.addSubMessage(subId, { id: msgId, question, answer: "", bookmarked: false });
@@ -325,8 +280,6 @@ const handleUpgrade = () => {
     }
   };
 
-
-  // [FIX#4] stroke 시작 전 현재 상태 저장
   const saveStroke = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -336,7 +289,6 @@ const handleUpgrade = () => {
     if (strokeHistoryRef.current.length > 50) strokeHistoryRef.current.shift();
   };
 
-  // [FIX#4] undo
   const undoStroke = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -348,7 +300,6 @@ const handleUpgrade = () => {
     else ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  // [FIX canvas 좌표] scaleX/scaleY 적용
   const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
     saveStroke();
     isDrawingRef.current = true;
@@ -362,7 +313,6 @@ const handleUpgrade = () => {
     lastPosRef.current = { x, y };
   };
 
-  // [FIX canvas 좌표] scaleX/scaleY 적용
   const draw = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isDrawingRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -398,7 +348,6 @@ const handleUpgrade = () => {
     strokeHistoryRef.current = [];
   };
 
-  // [FIX#5] 캔버스 이미지 추출 헬퍼
   const getCanvasImage = (): string | undefined => {
     if (!showCanvas || !canvasRef.current) return undefined;
     const ctx = canvasRef.current.getContext("2d");
@@ -409,9 +358,6 @@ const handleUpgrade = () => {
     return canvasRef.current.toDataURL("image/png");
   };
 
-  
-
-  // 👇 다중 파일 및 용량/요금제 제한을 포함한 파일 첨부 핸들러
   const handleFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -448,10 +394,7 @@ const handleUpgrade = () => {
     e.target.value = ""; 
   };
  
-
-  // [FIX#3,5] 요금제 검증 + 캔버스/다중파일 통합 전송
   const handleUnifiedSend = () => {
-    // 1. 요금제 및 토큰 횟수 검증
     if (!isPremium) {
       if (aiMode === 'flash' && usage.flash >= 30) return alert("오늘의 빠른 모드 무료 횟수(30회)를 소진했습니다.");
       if (aiMode === 'thinking' && usage.thinking >= 1) return alert("오늘의 사고 모드 무료 횟수(1회)를 소진했습니다. 업그레이드 하세요!");
@@ -461,7 +404,6 @@ const handleUpgrade = () => {
       if (usage.usedTokens + requiredTokens > usage.maxTokens) return alert("토큰이 부족합니다.");
     }
 
-    // 2. 파일 및 질문 통합
     const canvasImage = getCanvasImage();
     let finalImages: string[] = [];
     let question = input.trim();
@@ -499,9 +441,6 @@ const handleUpgrade = () => {
       handleSendMain(question, imageToSend);
     }
   };
- 
-
-
 
   const togglePopMode = () => {
     if (!popMode) {
@@ -707,7 +646,7 @@ const handleUpgrade = () => {
             </div>
           ))}
         </div>
-                <div className={`p-2 border-t ${border} flex items-center justify-between`}>
+        <div className={`p-2 border-t ${border} flex items-center justify-between`}>
           {currentUser ? (
             <button onClick={handleLogout} className={`flex items-center gap-2 px-3 py-2 text-xs text-red-500`}><User size={14} /> 로그아웃</button>
           ) : (
@@ -715,7 +654,6 @@ const handleUpgrade = () => {
           )}
           <button onClick={() => { setShowSettings(true); setShowSidebar(false); }} className={`p-2 ${text3}`}><Settings size={15} /></button>
         </div>
-
       </div>
 
       {showPopup && popupPos === "left" && !isMobile && (
@@ -828,154 +766,135 @@ const handleUpgrade = () => {
         <div className={`px-3 pb-1 pt-2 ${bg} flex-shrink-0`}>
           <div className={`flex flex-col px-3 py-2 max-w-2xl mx-auto border ${popMode ? "border-[#f59e0b]" : `${border}`} rounded-2xl ${bg} transition-colors`}>
             {showCanvas && (
-          <div className="mb-2">
-            <canvas ref={canvasRef} width={600} height={200}
-              className={`drawing-canvas w-full rounded-lg border ${dark ? "border-[#2a2a2a] bg-[#111]" : "border-[#e5e5e5] bg-[#fafafa]"}`}
-              style={{ height: "150px" }}
-              onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
-              onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
-            <div className="flex gap-2 mt-1">
-              <button onClick={undoStroke} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} flex items-center gap-1`}><Undo2 size={12} />되돌리기</button>
-              <button onClick={() => setEraserMode(!eraserMode)} className={`text-xs px-2 py-1 rounded ${eraserMode ? "bg-[#ef4444] text-white" : `${text3} ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}`}>{eraserMode ? "지우개 ON" : "지우개"}</button>
-              <button onClick={clearCanvas} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>전체삭제</button>
-              <button onClick={() => imageInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📷</button>
-              <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>🖼️</button>
-              <button onClick={() => docInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📎</button>
-            </div>
-                          {/* 👇 다중 파일 입력을 위한 input 태그 수정 */}
-            <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileAttach} />
-            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileAttach} />
-            <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.csv" className="hidden" onChange={handleFileAttach} />
-          </div>
-        )}
-
-        <div className="relative">
-        
-          {/* 다중 첨부파일 렌더링 영역 */}
-          {attachedFiles.length > 0 && (
-            <div className="flex flex-col gap-1 mb-2">
-              {attachedFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-[#4a9eff]/10 px-3 py-1.5 rounded-lg">
-                  <span className="text-[11px] text-[#4a9eff] truncate flex-1">{file.isImage ? "🖼️ " : "📎 "}{file.name}</span>
-                  <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))} className="text-[#4a9eff] p-1 ml-2"><X size={14} /></button>
+              <div className="mb-2">
+                <canvas ref={canvasRef} width={600} height={200}
+                  className={`drawing-canvas w-full rounded-lg border ${dark ? "border-[#2a2a2a] bg-[#111]" : "border-[#e5e5e5] bg-[#fafafa]"}`}
+                  style={{ height: "150px" }}
+                  onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+                  onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+                <div className="flex gap-2 mt-1">
+                  <button onClick={undoStroke} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} flex items-center gap-1`}><Undo2 size={12} />되돌리기</button>
+                  <button onClick={() => setEraserMode(!eraserMode)} className={`text-xs px-2 py-1 rounded ${eraserMode ? "bg-[#ef4444] text-white" : `${text3} ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}`}>{eraserMode ? "지우개 ON" : "지우개"}</button>
+                  <button onClick={clearCanvas} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>전체삭제</button>
+                  <button onClick={() => imageInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📷</button>
+                  <button onClick={() => fileInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>🖼️</button>
+                  <button onClick={() => docInputRef.current?.click()} className={`text-xs ${text3} px-2 py-1 rounded ${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"}`}>📎</button>
                 </div>
-              ))}
-            </div>
-          )}
+                <input ref={imageInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileAttach} />
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileAttach} />
+                <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.csv" className="hidden" onChange={handleFileAttach} />
+              </div>
+            )}
+
+            <div className="relative">
+              {attachedFiles.length > 0 && (
+                <div className="flex flex-col gap-1 mb-2">
+                  {attachedFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-[#4a9eff]/10 px-3 py-1.5 rounded-lg">
+                      <span className="text-[11px] text-[#4a9eff] truncate flex-1">{file.isImage ? "🖼️ " : "📎 "}{file.name}</span>
+                      <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))} className="text-[#4a9eff] p-1 ml-2"><X size={14} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-  onKeyDown={(e) => { 
-    // 🚨 !isMobile 조건을 추가해서 모바일이면 엔터가 전송이 아닌 줄바꿈으로 작동하게 합니다.
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !isMobile) { 
-      e.preventDefault(); 
-      handleUnifiedSend(); 
-    } 
-  }}
- 
-          placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
-              className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
+                onKeyDown={(e) => { 
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !isMobile) { 
+                    e.preventDefault(); 
+                    handleUnifiedSend(); 
+                  } 
+                }}
+                placeholder={popMode ? "팝업 질문..." : "메시지 입력..."} rows={2}
+                className={`w-full bg-transparent ${text1} text-[13px] resize-none outline-none placeholder:text-[#bbb] min-h-[48px] max-h-[120px]`} />
             
-            {/* 전송 및 기능 버튼 영역 */}
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30 relative">
-              
-              {/* 좌측 버튼들 (팝업, 캔버스) */}
-              <div className="flex items-center gap-3">
-                <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
-                <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
-              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e5]/30 relative">
+                <div className="flex items-center gap-3">
+                  <button onClick={togglePopMode} className={`p-2 rounded-full transition-colors ${popMode ? "bg-[#f59e0b] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`}`}><Zap size={15} /></button>
+                  <button onClick={() => setShowCanvas(!showCanvas)} className={`p-2 rounded-full ${showCanvas ? "bg-[#4a9eff] text-white" : `${dark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"} ${text3}`} active:scale-95`}><Plus size={15} /></button>
+                </div>
 
-              {/* 우측 버튼들 (모드 선택 + 전송) */}
-              <div className="flex items-center gap-2">
-                
-                                {/* 모드 선택 바텀시트/팝업 */}
-                {showModeModal && (
-                  <div className={`absolute bottom-[110%] right-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 animate-fadeIn`}>
+                <div className="flex items-center gap-2">
+                  {showModeModal && (
+                    <div className={`absolute bottom-[110%] right-0 w-72 ${bg} border ${border} rounded-2xl shadow-xl z-50 p-3 animate-fadeIn`}>
+                      <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                        <div>
+                          <span className={`text-sm font-medium ${text1}`}> 빠른 모드</span>
+                          <p className={`text-[10px] ${text3}`}>가장 빠름</p>
+                        </div>
+                        {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
+                      </button>
                     
-                    <button onClick={() => { setAiMode('flash'); setShowModeModal(false); }} className={`w-full text-left p-2 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div>
-                        <span className={`text-sm font-medium ${text1}`}> 빠른 모드</span>
-                        <p className={`text-[10px] ${text3}`}>가장 빠름</p>
+                      <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                        <div>
+                          <span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
+                          <p className={`text-[10px] ${text3}`}>
+                            {isPremium ? '기억력, 사고력 특화' : '기억력, 사고력 특화 (일 1회 무료)'}
+                          </p>
+                        </div>
+                        {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
+                      </button>
+                    
+                      <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
+                        <div>
+                          <span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
+                          <p className={`text-[10px] ${text3}`}>
+                            {isPremium ? '코딩, 수학 계산에 특화' : '코딩, 수학 계산에 특화 (일 1회 무료)'}
+                          </p>
+                        </div>
+                        {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
+                      </button>
+
+                      <div className={`mt-3 pt-3 border-t ${border}`}>
+                        {isPremium ? (
+                          <div className="w-full">
+                            <div className="flex justify-between text-[11px] mb-1.5 font-medium">
+                              <span className={text1}>7일 유연 한도 사용량: {((usage.usedTokens / usage.maxTokens) * 100).toFixed(1)}%</span>
+                              <span className={text3}>{usage.usedTokens.toLocaleString()} / {usage.maxTokens.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                              <div 
+                                className={`h-1.5 rounded-full transition-all duration-500 ${ (usage.usedTokens / usage.maxTokens) > 0.8 ? 'bg-red-500' : 'bg-[#4a9eff]' }`} 
+                                style={{ width: `${Math.min(100, (usage.usedTokens / usage.maxTokens) * 100)}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-[9px] text-[#999] mt-2 text-center">오늘 한도를 초과해도 주간 여유분 내에서 당겨 쓸 수 있습니다.</p>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center">
+                            <span className={`text-[11px] ${text3}`}>무료 요금제 (일일 제한)</span>
+                            <button onClick={handleUpgrade} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
+                          </div>
+                        )}
                       </div>
-                      {aiMode === 'flash' && <Check size={16} className="text-[#4a9eff]"/>}
-                    </button>
-                    
-                    <button onClick={() => { setAiMode('thinking'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div>
-                        <span className={`text-sm font-medium ${text1}`}> 사고 모드</span>
-                        <p className={`text-[10px] ${text3}`}>
-                          {isPremium ? '기억력, 사고력 특화' : '기억력, 사고력 특화 (일 1회 무료)'}
-                        </p>
-                      </div>
-                      {aiMode === 'thinking' && <Check size={16} className="text-[#4a9eff]"/>}
-                    </button>
-                    
-                    <button onClick={() => { setAiMode('pro'); setShowModeModal(false); }} className={`w-full text-left p-2 mt-1 rounded-lg hover:${dark ? 'bg-[#2a2a2a]' : 'bg-gray-50'} flex justify-between items-center`}>
-                      <div>
-                        <span className={`text-sm font-medium ${text1}`}> 연산 모드</span>
-                        <p className={`text-[10px] ${text3}`}>
-                          {isPremium ? '코딩, 수학 계산에 특화' : '코딩, 수학 계산에 특화 (일 1회 무료)'}
-                        </p>
-                      </div>
-                      {aiMode === 'pro' && <Check size={16} className="text-[#4a9eff]"/>}
-                    </button>
-                  
-<div className={`mt-3 pt-3 border-t ${border}`}>
-  {isPremium ? (
-    <div className="w-full">
-      <div className="flex justify-between text-[11px] mb-1.5 font-medium">
-        {/* 문구 수정: 주간 여유분임을 명시 */}
-        <span className={text1}>7일 유연 한도 사용량: {((usage.usedTokens / usage.maxTokens) * 100).toFixed(1)}%</span>
-        <span className={text3}>{usage.usedTokens.toLocaleString()} / {usage.maxTokens.toLocaleString()}</span>
-      </div>
-      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-        <div 
-          className={`h-1.5 rounded-full transition-all duration-500 ${ (usage.usedTokens / usage.maxTokens) > 0.8 ? 'bg-red-500' : 'bg-[#4a9eff]' }`} 
-          style={{ width: `${Math.min(100, (usage.usedTokens / usage.maxTokens) * 100)}%` }}
-        ></div>
-      </div>
-      <p className="text-[9px] text-[#999] mt-2 text-center">오늘 한도를 초과해도 주간 여유분 내에서 당겨 쓸 수 있습니다.</p>
-    </div>
-  ) : (
-    <div className="flex justify-between items-center">
-      <span className={`text-[11px] ${text3}`}>무료 요금제 (일일 제한)</span>
-      <button onClick={handleUpgrade} className="text-[10px] bg-[#4a9eff]/10 text-[#4a9eff] px-2 py-1 rounded-md font-medium">업그레이드</button>
-    </div>
-  )}
-</div>
+                    </div>
+                  )}
 
-
-
-
-                    
-
-                {/* 모드 선택 버튼 (전송 버튼 바로 옆) */}
-                <button onClick={() => setShowModeModal(!showModeModal)} 
-                  className={`text-[11px] font-medium px-3 py-2 rounded-xl flex items-center gap-1 transition-colors ${dark ? "bg-[#2a2a2a] text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#333] hover:bg-[#e5e5e5]"}`}>
-                  {aiMode === 'flash' ? ' 빠른 모드' : aiMode === 'thinking' ? ' 사고 모드' : ' 연산 모드'}
-                  <ChevronDown size={14} className="ml-0.5" />
-                </button>
-
-                {/* 기존 정지/전송 버튼 */}
-                {store.isLoading || !!store.subChatLoading ? (
-                  <button onClick={handleStop} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`} title="응답 정지">
-                    <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
+                  <button onClick={() => setShowModeModal(!showModeModal)} 
+                    className={`text-[11px] font-medium px-3 py-2 rounded-xl flex items-center gap-1 transition-colors ${dark ? "bg-[#2a2a2a] text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#333] hover:bg-[#e5e5e5]"}`}>
+                    {aiMode === 'flash' ? ' 빠른 모드' : aiMode === 'thinking' ? ' 사고 모드' : ' 연산 모드'}
+                    <ChevronDown size={14} className="ml-0.5" />
                   </button>
-                ) : (
-                  <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
-                    <Send size={15} className="text-white" />
-                  </button>
-                )}
+
+                  {store.isLoading || !!store.subChatLoading ? (
+                    <button onClick={handleStop} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-xl select-none active:scale-95 transition-all flex items-center justify-center`} title="응답 정지">
+                      <div className="w-[14px] h-[14px] bg-white rounded-[2px]" />
+                    </button>
+                  ) : (
+                    <button onClick={handleUnifiedSend} disabled={!input.trim() && !showCanvas && attachedFiles.length === 0} className={`p-2.5 ${popMode ? "bg-[#f59e0b]" : "bg-[#4a9eff]"} rounded-full disabled:opacity-30 select-none active:scale-95 transition-all`}>
+                      <Send size={15} className="text-white" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-          </div> {/* <-- 입력창 테두리 div 닫기 */}
           <p className={`text-center text-[9px] mt-0.5 ${popMode ? "text-[#f59e0b]" : text4}`}>
             {popMode ? "⚡ 팝업 모드" : `⚡ 탭 또는 [ ${settings.popupShortcut} ] 키`}
           </p>
-        </div> {/* <-- 하단 입력 영역 묶음 div 닫기 */}
-      </div> {/* <-- 메인 화면 묶음 div 닫기 */}
+        </div>
+      </div>
 
-      {/* 우측 팝업 채팅 영역 (태블릿/PC) */}
       {showPopup && popupPos === "right" && !isMobile && (
         <div className={`w-80 ${bg} flex flex-col flex-shrink-0 border-l border-[#f59e0b]`}>
           <div className={`flex items-center justify-between px-3 py-1.5 border-b border-[#f59e0b] flex-shrink-0`}>
@@ -989,7 +908,6 @@ const handleUpgrade = () => {
         </div>
       )}
 
-      {/* 로그인/회원가입 모달 */}
       {showAuth && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className={`${bg} border ${border} rounded-2xl p-5 w-full max-w-sm flex flex-col gap-4 animate-fadeIn`}>
@@ -1006,7 +924,6 @@ const handleUpgrade = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 }
